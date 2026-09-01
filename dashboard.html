@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/gif" href="assets/images/us-vaglg.gif" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Administrative dashboard for Glasgow Town operations, including document uploads and messaging workflows." />
+    <title>Admin Dashboard | Town of Glasgow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div data-include="header.html"></div>
+
+    <main id="main-content">
+      <section class="section">
+        <div class="container">
+
+          <div id="login-screen">
+            <div class="section-header">
+              <p class="eyebrow">Admin dashboard</p>
+              <h1>Sign in</h1>
+              <p>Enter your credentials to access the operations dashboard.</p>
+            </div>
+            <div class="dashboard-card card" style="max-width:400px;">
+              <form id="login-form" class="dashboard-form">
+                <div class="form-grid">
+                  <div class="form-group full-width">
+                    <label for="login-username">Username</label>
+                    <input id="login-username" type="text" autocomplete="username" required />
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="login-password">Password</label>
+                    <input id="login-password" type="password" autocomplete="current-password" required />
+                  </div>
+                  <div class="form-group full-width">
+                    <button type="submit" class="button">Sign in</button>
+                  </div>
+                  <div class="form-group full-width">
+                    <p id="login-status" class="status-text"></p>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="dashboard-screen" class="hidden">
+          <div class="section-header">
+            <p class="eyebrow">Admin dashboard</p>
+            <h1>Operations dashboard</h1>
+          </div>
+
+          <div class="dashboard-card card">
+            <div class="dashboard-tabs" role="tablist" aria-label="Dashboard sections">
+              <button type="button" role="tab" aria-selected="true" aria-controls="event-panel" id="event-tab" class="tab-button">Create event</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="upload-panel" id="upload-tab" class="tab-button">Upload documents</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="notices-panel" id="notices-tab" class="tab-button">Public Notices</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="government-panel" id="government-tab" class="tab-button">Manage Government</button>
+              <!--button type="button" role="tab" aria-selected="false" aria-controls="sms-panel" id="sms-tab" class="tab-button">Messaging</button-->
+              <button type="button" role="tab" aria-selected="false" aria-controls="service-requests-panel" id="service-requests-tab" class="tab-button">Service requests</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="users-panel" id="users-tab" class="tab-button">Users</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="future-panel" id="future-tab" class="tab-button">Future modules</button>
+            </div>
+
+            <div id="notices-panel" role="tabpanel" aria-labelledby="notices-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Draft, schedule, and publish public notices and legal announcements.</p>
+              </div>
+
+              <div class="form-actions public-notice-actions-row">
+                <button type="button" id="public-notice-open-create" class="button button-primary">Create notice</button>
+                <span id="public-notice-list-status" class="status-text" aria-live="polite"></span>
+              </div>
+
+              <div id="public-notice-list" class="public-notice-list">
+                <article class="card"><p>Loading notices…</p></article>
+              </div>
+            </div>
+
+            <div id="government-panel" role="tabpanel" aria-labelledby="government-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Manage government entities and the members for each.</p>
+              </div>
+
+              <form id="government-form" class="dashboard-form">
+                <div class="form-grid">
+                  <div class="form-group full-width">
+                    <label for="government-type-select">Government entity</label>
+                    <select id="government-type-select">
+                      <option value="">Loading government entities…</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-actions government-actions-row">
+                  <button type="button" id="government-add-type" class="button">Add entity</button>
+                  <button type="button" id="government-add-member" class="button button-primary" disabled>Add member</button>
+                  <div id="government-show-inactive-wrap" class="hidden">
+                    <label class="checkbox-row" for="government-show-inactive">
+                      <input id="government-show-inactive" type="checkbox" />
+                      <span>Show Inactive</span>
+                    </label>
+                  </div>
+                  <span id="government-status" class="status-text" aria-live="polite"></span>
+                </div>
+              </form>
+
+              <div id="government-members-list" class="government-members-list">
+                <article class="card"><p>Select a government entity to manage its members.</p></article>
+              </div>
+            </div>
+
+            <div id="sms-panel" role="tabpanel" aria-labelledby="sms-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Send a sample text message through the Twilio Cloud Run endpoint.</p>
+              </div>
+
+              <form id="sms-form" class="dashboard-form">
+                <div class="form-grid">
+                  <div class="form-group full-width">
+                    <label for="sms-to">Phone number</label>
+                    <input id="sms-to" type="tel" placeholder="e.g. +15555550123" />
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="sms-message">Sample message</label>
+                    <textarea id="sms-message" rows="4">Test message from the Town of Glasgow dashboard.</textarea>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="button button-primary">Send sample message</button>
+                  <span id="sms-status" class="status-text" aria-live="polite"></span>
+                </div>
+              </form>
+            </div>
+
+            <div id="upload-panel" role="tabpanel" aria-labelledby="upload-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Upload document files to a selected bucket.</p>
+              </div>
+
+              <form id="upload-form" class="dashboard-form">
+                <div class="form-grid">
+                  <div class="form-group full-width">
+                    <label for="upload-prefix">Destination folder</label>
+                    <select id="upload-prefix"><option value="">Loading folders…</option></select>
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="upload-file">Document file</label>
+                    <input id="upload-file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" />
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="upload-title">Document title</label>
+                    <input id="upload-title" type="text" placeholder="Enter a descriptive title" />
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="upload-description">Description</label>
+                    <textarea id="upload-description" rows="3" placeholder="Optional description for this document"></textarea>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="button button-primary">Submit upload</button>
+                  <span id="upload-status" class="status-text" aria-live="polite"></span>
+                </div>
+              </form>
+            </div>
+
+            <div id="event-panel" role="tabpanel" aria-labelledby="event-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Review and manage upcoming town events and meetings.</p>
+              </div>
+
+              <div class="event-toolbar">
+                <button type="button" id="event-create-new" class="button button-primary">Create New Event</button>
+                <div class="event-range-picker">
+                  <label for="event-date-from">Date From</label>
+                  <input id="event-date-from" type="date" />
+                  <label for="event-date-to">Date To</label>
+                  <input id="event-date-to" type="date" />
+                </div>
+              </div>
+
+              <div id="event-list" class="event-list" aria-live="polite"></div>
+            </div>
+
+            <div id="service-requests-panel" role="tabpanel" aria-labelledby="service-requests-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Review resident maintenance requests and update the status of open tickets.</p>
+              </div>
+
+              <div class="ticket-log-filter-row">
+                <label for="service-request-status-filter">Status</label>
+                <select id="service-request-status-filter">
+                  <option value="All">All</option>
+                  <option value="New" selected>New</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+
+              <div class="ticket-log-list" id="service-requests-log"></div>
+            </div>
+
+            <div id="users-panel" role="tabpanel" aria-labelledby="users-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Manage dashboard access for staff users, including admin status and inactive accounts.</p>
+              </div>
+
+              <div class="form-actions users-actions-row">
+                <button type="button" id="user-add-button" class="button button-primary">Add user</button>
+                <label class="checkbox-row" for="user-show-inactive">
+                  <input id="user-show-inactive" type="checkbox" />
+                  <span>Show inactive users</span>
+                </label>
+                <span id="user-status" class="status-text" aria-live="polite"></span>
+              </div>
+
+              <div id="users-list" class="users-list" aria-live="polite">
+                <article class="card"><p>Loading users…</p></article>
+              </div>
+            </div>
+
+            <div id="future-panel" role="tabpanel" aria-labelledby="future-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Planned modules and integrations for future phases of the Glasgow town platform.</p>
+              </div>
+
+              <div class="dashboard-grid">
+                <article class="card">
+                  <h3>Payments</h3>
+                  <p>Residents would be able to pay Water/Sewer bills, Taxes, Permit Fees, and miscellaneous town fees online. The proposed flow uses <strong>Stripe Checkout</strong> — residents select a payment category, enter their account/reference number and amount due, and are redirected to a Stripe-hosted payment page. The town never handles raw card data. On completion, Stripe emails a receipt automatically and logs payment metadata (type, reference, amount, timestamp) for reconciliation.</p>
+                  <p style="margin-top:0.75rem;">Stripe is the payment infrastructure behind many services residents already use daily — including <strong>Shopify</strong> stores, <strong>DoorDash</strong>, <strong>Amazon</strong>, <strong>Instacart</strong>, and many others. It processes hundreds of billions of dollars per year and is trusted by governments, universities, and nonprofits worldwide. Choosing Stripe means residents are paying through the same secure, familiar system they encounter everywhere else online.</p>
+                </article>
+                <article class="card">
+                  <h3>Text messaging (Twilio)</h3>
+                  <p>The backend for SMS notifications is fully implemented using the <strong>Twilio API</strong>, allowing staff to send text messages to residents or contacts directly from the dashboard. The function code is complete and tested — once the town establishes a Twilio account and provides the API credentials (Account SID, API Key, and sending number), this tab can be re-enabled with no code changes required.</p>
+                  <p style="margin-top:0.75rem;">Intended use cases include emergency notifications, meeting reminders, and utility service alerts.</p>
+
+                </article>
+              </div>
+            </div>
+          </div>
+          </div><!-- end dashboard-screen -->
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-shell">
+        <p>© <span id="year"></span> Town of Glasgow, Virginia. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <div id="government-member-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="government-member-modal-title">
+        <button type="button" id="government-member-modal-close" class="modal-close" aria-label="Close member editor">×</button>
+        <h3 id="government-member-modal-title">Government member</h3>
+        <form id="government-member-form" class="dashboard-form">
+          <input id="government-member-mode" type="hidden" value="create" />
+          <input id="government-member-index" type="hidden" value="-1" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="government-member-title">Title / Role</label>
+              <input id="government-member-title" type="text" placeholder="e.g. Council Member" />
+            </div>
+            <div class="form-group">
+              <label for="government-member-name">Name</label>
+              <input id="government-member-name" type="text" placeholder="e.g. Jane Smith" />
+            </div>
+            <div class="form-group">
+              <label for="government-member-phone">Phone number</label>
+              <input id="government-member-phone" type="tel" placeholder="e.g. 540-555-1212" />
+            </div>
+            <div class="form-group">
+              <label for="government-member-email">Email</label>
+              <input id="government-member-email" type="email" placeholder="e.g. jane@example.org" />
+            </div>
+            <div class="form-group full-width">
+              <label for="government-member-term-date">Term date</label>
+              <input id="government-member-term-date" type="date" />
+            </div>
+            <div class="form-group full-width">
+              <label class="checkbox-row" for="government-member-active">
+                <input id="government-member-active" type="checkbox" checked />
+                <span>Active</span>
+              </label>
+            </div>
+            <div class="form-group full-width">
+              <label for="government-member-image-file">Image file</label>
+              <input id="government-member-image-file" type="file" accept="image/*" capture="environment" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Save member</button>
+            <span id="government-member-modal-status" class="status-text" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="government-description-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="government-description-modal-title">
+        <button type="button" id="government-description-modal-close" class="modal-close" aria-label="Close description editor">×</button>
+        <h3 id="government-description-modal-title">Edit entity description</h3>
+        <form id="government-description-form" class="dashboard-form">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="government-description-text">Description</label>
+              <textarea id="government-description-text" rows="6" placeholder="Enter the government type description"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Save description</button>
+            <span id="government-description-status" class="status-text" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="government-type-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="government-type-modal-title">
+        <button type="button" id="government-type-modal-close" class="modal-close" aria-label="Close government entity editor">×</button>
+        <h3 id="government-type-modal-title">Add government entity</h3>
+        <form id="government-type-form" class="dashboard-form">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="government-type-name">Entity name</label>
+              <input id="government-type-name" type="text" placeholder="e.g. Board of Zoning Appeals" />
+            </div>
+            <div class="form-group full-width">
+              <label for="government-type-description">Description</label>
+              <textarea id="government-type-description" rows="6" placeholder="Enter the government entity description"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Save entity</button>
+            <span id="government-type-status" class="status-text" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="service-request-details-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal service-request-modal" role="dialog" aria-modal="true" aria-labelledby="service-request-details-title">
+        <button type="button" id="service-request-details-modal-close" class="modal-close" aria-label="Close service request details">×</button>
+        <h3 id="service-request-details-title">Service request</h3>
+        <dl class="event-modal-details service-request-modal-details">
+          <div class="service-request-inline-row">
+            <div><dt>Ticket ID</dt><dd id="service-request-details-id"></dd></div>
+            <div><dt>Category</dt><dd id="service-request-details-category"></dd></div>
+          </div>
+          <div class="service-request-inline-row">
+            <div><dt>Email</dt><dd id="service-request-details-email"></dd></div>
+            <div><dt>Phone</dt><dd id="service-request-details-phone"></dd></div>
+          </div>
+          <div><dt>Address</dt><dd id="service-request-details-address"></dd></div>
+          <div><dt>Description</dt><dd id="service-request-details-description"></dd></div>
+        </dl>
+        <div id="service-request-image-wrapper" class="service-request-image-wrapper hidden">
+          <label>Attached image</label>
+          <img id="service-request-image" src="" alt="" />
+        </div>
+        <div class="service-request-note-block">
+          <label for="service-request-detail-notes">Service Notes</label>
+          <textarea id="service-request-detail-notes" rows="4" placeholder="Add any internal notes for this request."></textarea>
+        </div>
+        <div class="ticket-log-form-row service-request-modal-actions">
+          <label for="service-request-detail-status">Status</label>
+          <select id="service-request-detail-status">
+            <option value="New">New</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Closed">Closed</option>
+          </select>
+          <button type="button" id="service-request-detail-status-save" class="button button-primary">Update Request</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="user-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+        <button type="button" id="user-modal-close" class="modal-close" aria-label="Close user editor">×</button>
+        <h3 id="user-modal-title">Add user</h3>
+        <form id="user-form" class="dashboard-form">
+          <input id="user-id" type="hidden" value="" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="user-first-name">First name</label>
+              <input id="user-first-name" type="text" placeholder="e.g. Jordan" />
+            </div>
+            <div class="form-group">
+              <label for="user-last-name">Last name</label>
+              <input id="user-last-name" type="text" placeholder="e.g. Smith" />
+            </div>
+            <div class="form-group full-width">
+              <label for="user-username">Username</label>
+              <input id="user-username" type="text" placeholder="e.g. publicworks" required />
+            </div>
+            <div class="form-group full-width">
+              <label for="user-password">Password</label>
+              <input id="user-password" type="password" placeholder="Enter a new password" />
+            </div>
+            <div class="form-group full-width">
+              <label for="user-password-confirm">Confirm password</label>
+              <input id="user-password-confirm" type="password" placeholder="Re-enter password" />
+            </div>
+            <div class="form-group">
+              <label for="user-role">Role</label>
+              <select id="user-role">
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-row" for="user-active">
+                <input id="user-active" type="checkbox" checked />
+                <span>Active</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Save user</button>
+            <span id="user-modal-status" class="status-text" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="event-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
+        <button type="button" id="event-modal-close" class="modal-close" aria-label="Close event editor">×</button>
+        <h3 id="event-modal-title">Create event</h3>
+        <form id="event-form" class="dashboard-form">
+          <input id="event-id" type="hidden" value="" />
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="event-title">Event title</label>
+              <input id="event-title" type="text" placeholder="e.g. Town Council Meeting" />
+            </div>
+            <div class="form-group">
+              <label for="event-date">Date</label>
+              <input id="event-date" type="date" />
+            </div>
+            <div class="form-group">
+              <label for="event-type">Event type</label>
+              <select id="event-type">
+                <option value="meeting">Meeting</option>
+                <option value="event">Event</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="event-start">Start time</label>
+              <input id="event-start" type="time" />
+            </div>
+            <div class="form-group">
+              <label for="event-end">End time</label>
+              <input id="event-end" type="time" />
+            </div>
+            <div class="form-group full-width">
+              <label for="event-location">Location</label>
+              <input id="event-location" type="text" placeholder="e.g. Glasgow Town Hall" />
+            </div>
+            <div class="form-group full-width">
+              <label for="event-description">Description</label>
+              <textarea id="event-description" rows="4" placeholder="Agenda items, notes, or public notice text"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Save</button>
+            <span id="event-status" class="status-text" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="public-notice-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal public-notice-modal" role="dialog" aria-modal="true" aria-labelledby="public-notice-modal-title">
+        <button type="button" id="public-notice-modal-close" class="modal-close" aria-label="Close public notice editor">×</button>
+        <h3 id="public-notice-modal-title">Create public notice</h3>
+        <form id="public-notice-form" class="dashboard-form">
+          <input id="public-notice-id" type="hidden" value="" />
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="public-notice-title">Notice title</label>
+              <input id="public-notice-title" type="text" placeholder="e.g. Public Hearing: Utility Rate Update" required />
+            </div>
+            <div class="form-group full-width">
+              <label for="public-notice-summary">Short summary</label>
+              <textarea id="public-notice-summary" rows="3" placeholder="One-paragraph summary shown in the homepage carousel."></textarea>
+            </div>
+            <div class="form-group full-width">
+              <label for="public-notice-body">Full notice text</label>
+              <textarea id="public-notice-body" rows="6" placeholder="Full legal/public notice text."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="public-notice-category">Category</label>
+              <select id="public-notice-category">
+                <option value="General Notice">General Notice</option>
+                <option value="Legal Announcement">Legal Announcement</option>
+                <option value="Public Hearing">Public Hearing</option>
+                <option value="Bid Notice">Bid Notice</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="public-notice-status">Status</label>
+              <select id="public-notice-status">
+                <option value="draft">Draft</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="published">Published</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="public-notice-publish-at">Publish at</label>
+              <input id="public-notice-publish-at" type="datetime-local" />
+            </div>
+            <div class="form-group">
+              <label for="public-notice-expires-at">Expires at</label>
+              <input id="public-notice-expires-at" type="datetime-local" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Save notice</button>
+            <span id="public-notice-status-text" class="status-text" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      window.siteConfig = {
+        uploadBucket: "glasgow-va",
+        uploadEndpoint: "https://uploaddocuments-821248093008.us-east4.run.app",
+        uploadToken: "", // injected at login
+        loginEndpoint: "https://adminlogin-821248093008.us-east4.run.app",
+        adminUsersEndpoint: "https://adminusers-821248093008.us-east4.run.app",
+        calendarEndpoint: "https://calendarwrite-821248093008.us-east4.run.app",
+        governmentEndpoint: "https://uploadimage-821248093008.us-east4.run.app",
+        publicNoticesEndpoint: "https://publicnotices-821248093008.us-east4.run.app",
+        serviceRequestsEndpoint: "https://servicerequests-821248093008.us-east4.run.app",
+        councilApiEndpoint: "https://councilimages-821248093008.us-east4.run.app",
+        smsEndpoint: "https://twiliosms-821248093008.us-east4.run.app",
+        eventsEndpoint: "https://readevents-821248093008.us-east4.run.app",
+        devNotificationEndpoint: "https://devnotification-821248093008.us-east4.run.app",
+        devNotificationDataUrl: "./assets/notifications/dev-message.json"
+      };
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+    <script src="dashboard.js"></script>
+  </body>
+</html>

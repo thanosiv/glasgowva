@@ -1,0 +1,2 @@
+Sample document placeholder for the FY 26-27 adopted budget.
+This file is intended to stand in for a real PDF or office document in the proof-of-concept site.

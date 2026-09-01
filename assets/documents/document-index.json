@@ -1,0 +1,40 @@
+{
+  "documents": [
+    {
+      "name": "2019-2021 Strategic Plan.pdf",
+      "path": "2019-2021%20Strategic%20Plan.pdf",
+      "type": "General",
+      "date": "2019-01-01"
+    },
+    {
+      "name": "Charter and Code_Revised_2019-03.pdf",
+      "path": "Charter and Code_Revised_2019-03.pdf",
+      "type": "General",
+      "date": "2019-03-01"
+    },
+    {
+      "name": "2024 Town Council Minutes.pdf",
+      "path": "council/minutes/2024%20Town%20Council%20Minutes.pdf",
+      "type": "Council",
+      "date": "2024-01-01"
+    },
+    {
+      "name": "2025 Town Council Minutes.pdf",
+      "path": "council/minutes/2025%20Town%20Council%20Minutes.pdf",
+      "type": "Council",
+      "date": "2025-01-01"
+    },
+    {
+      "name": "Annual Water Quality Report 2025.pdf",
+      "path": "Annual%20Water%20Quality%20Report%202025.pdf",
+      "type": "General",
+      "date": "2026-01-01"
+    },
+    {
+      "name": "2026 Town Council Minutes.pdf",
+      "path": "council/minutes/2026%20Town%20Council%20Minutes.pdf",
+      "type": "Council",
+      "date": "2026-01-01"
+    }
+  ]
+}

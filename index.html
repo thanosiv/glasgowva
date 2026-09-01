@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/gif" href="assets/images/us-vaglg.gif" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Official website for the Town of Glasgow, Virginia, featuring meeting information, public records, town services, and community updates." />
+    <title>Town of Glasgow, Virginia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div data-include="header.html"></div>
+
+    <main id="main-content">
+      <section class="hero" id="top">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Town of Glasgow, Virginia</p>
+            <h1>Transparent local government for our community.</h1>
+            <p>
+              The Town of Glasgow provides easy access to municipal services, official records, and timely civic updates. Find everything you need to stay connected—from council agendas and public notices to town resources.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#government">View town information</a>
+              <a class="button button-secondary" href="documents.html">Browse documents</a>
+            </div>
+          </div>
+          <div class="hero-card" aria-label="Town highlights">
+            <p class="eyebrow">Town highlights</p>
+            <ul>
+              <li>Historic community nestled in the Blue Ridge foothills along the James and Maury rivers.</li>
+              <li>Open, accessible local government dedicated to community service.</li>
+              <li>A welcoming home for residents, local businesses, and outdoor recreation.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="about">
+        <div class="container">
+          <div class="section-header">
+            <p class="eyebrow">About Glasgow</p>
+            <h2>Small-town character with a clear civic purpose.</h2>
+          </div>
+          <div class="grid two-up">
+            <article class="card">
+              <h3>Community overview</h3>
+              <p>
+                Glasgow, Virginia was settled as early as the 1730s and remains a compact community shaped by its natural environment and riverfront setting.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Nearby attractions</h3>
+              <p>
+                The town is a short drive from Natural Bridge State Park and close to historic downtown Lexington, creating a strong mix of local life and regional access.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt" id="government">
+        <div class="container">
+          <div class="section-header">
+            <p class="eyebrow">Government</p>
+            <h2>Town services and public information at a glance.</h2>
+          </div>
+          <div class="grid two-up">
+            <a class="card card-link" href="council.html">
+              <h3>Leadership & Committees</h3>
+              <p>Meet and contact your Town Council members, local commissions, and appointed officials.</p>
+            </a>
+            <a class="card card-link" href="documents.html">
+              <h3>Documents &amp; records</h3>
+              <p>Official documents, budgets, tax notices, meeting agendas, council minutes, and other public records maintained in a structured and filterable archive.</p>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="services">
+        <div class="container">
+          <div class="section-header">
+            <p class="eyebrow">Resident services</p>
+            <h2>Helpful resources for residents, visitors, and job seekers.</h2>
+          </div>
+          <div class="grid three-up">
+            <article class="card">
+              <h3>Resident resources</h3>
+              <p>Town services, department contacts, and public-facing updates designed to help residents find what they need quickly.</p>
+            </article>
+            <article class="card">
+              <h3>Online Bill Pay</h3>
+              <p>Pay utility bills securely online through the Town of Glasgow utility payment portal.</p>
+              <p><a href="https://glasgowutilities.qpaybill.com/Start.aspx" target="_blank" rel="noopener noreferrer">Pay your utility bill</a></p>
+            </article>
+            <a class="card card-link" href="service-requests.html">
+              <h3>Service requests</h3>
+              <p>Submit a maintenance request, report an issue, or track the status of an open ticket with the Town of Glasgow.</p>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt" id="public-notices" aria-labelledby="public-notices-title">
+        <div class="container">
+          <div class="section-header">
+            <p class="eyebrow">Public notices</p>
+            <h2 id="public-notices-title">Official announcements and legal notifications.</h2>
+          </div>
+
+          <article class="public-notices-carousel card" aria-live="polite">
+            <div class="public-notices-controls">
+              <button type="button" id="public-notices-prev" class="button" aria-label="Show previous notice">Previous</button>
+              <p id="public-notices-meta" class="public-notices-meta">Loading notices…</p>
+              <button type="button" id="public-notices-next" class="button" aria-label="Show next notice">Next</button>
+            </div>
+            <div id="public-notice-slide" class="public-notice-slide">
+              <h3>Loading notices…</h3>
+            </div>
+            <div id="public-notices-dots" class="public-notices-dots" aria-hidden="true"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="events">
+        <div class="container">
+          <div class="section-header">
+            <p class="eyebrow">Events</p>
+            <h2>Town meetings and community events calendar.</h2>
+          </div>
+          <article class="card events-calendar-shell" aria-labelledby="events-calendar-heading">
+            <div class="events-calendar-toolbar">
+              <div class="events-calendar-picker">
+                <label for="events-month-picker">Select month</label>
+                <input type="month" id="events-month-picker" name="events-month-picker" />
+              </div>
+            </div>
+            <div class="events-calendar-grid" aria-label="Monthly events calendar">
+              <div class="events-calendar-weekdays" aria-hidden="true">
+                <div class="calendar-weekday">Sun</div>
+                <div class="calendar-weekday">Mon</div>
+                <div class="calendar-weekday">Tue</div>
+                <div class="calendar-weekday">Wed</div>
+                <div class="calendar-weekday">Thu</div>
+                <div class="calendar-weekday">Fri</div>
+                <div class="calendar-weekday">Sat</div>
+              </div>
+              <div id="events-calendar-grid" class="events-calendar-days" role="list"></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <div id="event-details-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
+        <div class="modal" role="document">
+          <button id="event-modal-close" class="modal-close" type="button" aria-label="Close event details">&times;</button>
+          <h3 id="event-modal-title"></h3>
+          <dl class="event-modal-details">
+            <div><dt>Date</dt><dd id="event-modal-date"></dd></div>
+            <div><dt>Time</dt><dd id="event-modal-time"></dd></div>
+            <div><dt>Type</dt><dd id="event-modal-type"></dd></div>
+            <div><dt>Location</dt><dd id="event-modal-location"></dd></div>
+            <div><dt>Description</dt><dd id="event-modal-description"></dd></div>
+          </dl>
+          <p id="event-modal-agenda-wrap" class="hidden"><a id="event-modal-agenda" href="#" target="_blank" rel="noreferrer noopener">View agenda document</a></p>
+          <p id="event-modal-video-wrap" class="hidden"><a id="event-modal-video" href="#" target="_blank" rel="noreferrer noopener">Watch recording</a></p>
+        </div>
+      </div>
+
+      <!--section class="section alt" id="videos">
+        <div class="container">
+          <div class="section-header">
+            <p class="eyebrow">Town videos</p>
+            <h2>Recorded meetings and civic media in one place.</h2>
+          </div>
+          <div class="card">
+            <div id="video-list" class="video-list" aria-live="polite"></div>
+          </div>
+        </div>
+      </section-->
+
+      <section class="section alt" id="contact">
+        <div class="container contact-grid">
+          <div>
+            <p class="eyebrow">Contact</p>
+            <h2>Town Hall</h2>
+            <p>1100 Blue Ridge Road<br />PO Box 326<br />Glasgow, VA 24555</p>
+            <p><a href="tel:+15402582246">(540) 258-2246</a></p>
+            <p><a href="mailto:townhall@glasgowvirginia.org">townhall@glasgowvirginia.org</a></p>
+          </div>
+          <!--div class="card">
+            <h3>What residents can expect on the live site</h3>
+            <ul>
+              <li>Accessible, mobile-friendly navigation for all visitors</li>
+              <li>Town information organized around government, documents, and services</li>
+              <li>Upcoming meeting and event updates from the official council calendar</li>
+              <li>Public records, agendas, and supporting documents in one archive</li>
+              <li>Video resources for meetings, public information, and community highlights</li>
+            </ul>
+          </div-->
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-shell">
+        <p>© <span id="year"></span> Town of Glasgow, Virginia. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script>
+      window.siteConfig = {
+        googleCalendarEmbedUrl: "",
+        googleApiKey: "",
+        googleClientId: "",
+        googleCalendarId: "",
+        documentsApiEndpoint: "https://readdocuments-821248093008.us-east4.run.app",
+        eventsApiUrl: "https://readevents-821248093008.us-east4.run.app",
+        publicNoticesEndpoint: "https://publicnotices-821248093008.us-east4.run.app",
+        devNotificationEndpoint: "https://devnotification-821248093008.us-east4.run.app",
+        devNotificationDataUrl: "./assets/notifications/dev-message.json",
+        youtubeApiKey: "",
+        youtubePlaylistId: "",
+        azureBlobBaseUrl: "./assets/documents",
+        calendarDataUrl: "./assets/calendar/events.json",
+        videoDataUrl: "./assets/videos/videos.json"
+      };
+      if (window.__SITE_CONFIG__ && typeof window.__SITE_CONFIG__ === "object") {
+        window.siteConfig = { ...window.siteConfig, ...window.__SITE_CONFIG__ };
+      }
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,2 @@
+Sample document placeholder for the annual water quality report.
+This will later point to an Azure Blob Storage document or an approved hosted file.

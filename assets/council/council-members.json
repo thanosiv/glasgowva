@@ -1,0 +1,92 @@
+{
+  "Town Council": {
+    "description": "Glasgow's legislative authority is vested in the Town Council, with administrative duties delegated to the Town Manager. The Council is responsible for enacting ordinances, approving budgets, and setting policies that guide the town's development and services.",
+    "members": {
+      "member": [
+        {
+          "name": "Paul Williams",
+          "title": "Mayor",
+          "phoneNumber": "540-460-6077",
+          "email": "",
+          "termDate": "2027-12-31",
+          "active": true
+        },
+        {
+          "name": "Thomas Camden",
+          "title": "Council Member/Vice Mayor",
+          "phoneNumber": "",
+          "email": "",
+          "termDate": "2027-12-31",
+          "active": true
+        },
+        {
+          "name": "Lisa Rogers",
+          "title": "Council Member",
+          "phoneNumber": "",
+          "email": "",
+          "termDate": "2027-12-31",
+          "active": true
+        },
+        {
+          "name": "Marcie Hill",
+          "title": "Council Member",
+          "phoneNumber": "",
+          "email": "",
+          "termDate": "2026-12-31",
+          "active": true
+        },
+        {
+          "name": "Brandall Branch",
+          "title": "Council Member",
+          "phoneNumber": "",
+          "email": "",
+          "termDate": "2026-12-31",
+          "active": true
+        },
+        {
+          "name": "Natalie Harris",
+          "title": "Council Member",
+          "phoneNumber": "",
+          "email": "",
+          "termDate": "2026-12-31",
+          "active": true
+        },
+        {
+          "name": "William Thomas",
+          "title": "Council Member",
+          "phoneNumber": "",
+          "email": "",
+          "termDate": "2027-12-31",
+          "active": true
+        }
+      ]
+    }
+  },
+  "Town Hall": {
+    "description": "Town Hall is the Town of Glasgow’s central administrative office, led by the Town Manager and supported by executive and administrative staff. This team coordinates daily municipal operations, resident services, code enforcement, public works and maintenance oversight, and communication between departments, elected officials, and the public.",
+    "members": {
+      "member": [
+        {
+          "name": "Allyson Finchum",
+          "title": "Town Manager",
+          "phoneNumber": "",
+          "email": "",
+          "termDate": "",
+          "active": true
+        }
+      ]
+    }
+  },
+  "Planning Commission": {
+    "description": "Advisory body focused on land use, zoning recommendations, and long-range planning initiatives.",
+    "members": {
+      "member": []
+    }
+  },
+  "Financial Commission": {
+    "description": "Advisory body that reviews fiscal policy, budget alignment, and financial reporting practices.",
+    "members": {
+      "member": []
+    }
+  }
+}

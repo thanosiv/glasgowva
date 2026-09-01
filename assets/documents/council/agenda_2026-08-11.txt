@@ -1,0 +1,1 @@
+This is a sample agenda file showing how the automation of calendar and blob items can accurately link an agenda file to a scheduled meeting.

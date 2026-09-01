@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/gif" href="assets/images/us-vaglg.gif" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Submit a maintenance request or report an issue to the Town of Glasgow." />
+    <title>Service Requests | Town of Glasgow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div data-include="header.html"></div>
+
+    <main id="main-content">
+      <section class="section">
+        <div class="container">
+          <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+            <ol class="breadcrumbs">
+              <li><a href="index.html">Home</a></li>
+              <li aria-current="page">Service Requests</li>
+            </ol>
+          </nav>
+
+          <div class="section-header">
+            <p class="eyebrow">Resident services</p>
+            <h1>Submit a service request</h1>
+            <p>Report a maintenance issue, infrastructure concern, or town property problem for staff review.</p>
+          </div>
+
+          <div class="service-request-layout">
+            <article class="card">
+              <h2>Request a repair or service</h2>
+              <form id="service-request-form" class="service-request-form">
+                <div class="service-request-grid">
+                  <div class="form-group">
+                    <label for="service-name">Full name</label>
+                    <input id="service-name" name="name" type="text" autocomplete="name" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="service-email">Email</label>
+                    <input id="service-email" name="email" type="email" autocomplete="email" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="service-phone">Phone number</label>
+                    <input id="service-phone" name="phone" type="tel" autocomplete="tel" placeholder="(540) 555-0123" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="service-address">Service address</label>
+                    <input id="service-address" name="address" type="text" placeholder="Street address or location" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="service-category">Issue category</label>
+                    <select id="service-category" name="category" required>
+                      <option value="">Select a category</option>
+                      <option value="Street / sidewalk / pothole">Street / sidewalk / pothole</option>
+                      <option value="Water / sewer / drainage">Water / sewer / drainage</option>
+                      <option value="Streetlight / traffic / signage">Streetlight / traffic / signage</option>
+                      <option value="Parks / facilities / property">Parks / facilities / property</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="service-urgency">Urgency</label>
+                    <select id="service-urgency" name="urgency">
+                      <option value="Routine">Routine</option>
+                      <option value="Urgent">Urgent</option>
+                      <option value="Emergency">Emergency</option>
+                    </select>
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="service-description">Description</label>
+                    <textarea id="service-description" name="description" rows="6" placeholder="Describe the issue, its location, and any relevant details." required></textarea>
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="service-photo">Photo (optional)</label>
+                    <input id="service-photo" name="photo" type="file" accept="image/*" />
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="button button-primary">Submit request</button>
+                  <span id="service-request-status" class="status-text" aria-live="polite"></span>
+                </div>
+              </form>
+            </article>
+
+            <aside class="card">
+              <h2>Track an existing request</h2>
+              <form id="service-request-lookup-form" class="service-request-form compact">
+                <div class="form-group full-width">
+                  <label for="lookup-ticket-id">Ticket ID</label>
+                  <input id="lookup-ticket-id" type="text" placeholder="Example: SR-20260829-12345" required />
+                </div>
+                <div class="form-group full-width">
+                  <label for="lookup-email">Email address</label>
+                  <input id="lookup-email" type="email" autocomplete="email" required />
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="button">Check status</button>
+                </div>
+              </form>
+
+              <div id="service-request-status-card" class="service-request-status-card hidden" aria-live="polite">
+                <h3>Request status</h3>
+                <dl class="service-request-status-list">
+                  <div><dt>Ticket ID</dt><dd id="lookup-id">—</dd></div>
+                  <div><dt>Status</dt><dd id="lookup-status">—</dd></div>
+                  <div><dt>Category</dt><dd id="lookup-category">—</dd></div>
+                  <div><dt>Address</dt><dd id="lookup-address">—</dd></div>
+                  <div><dt>Last updated</dt><dd id="lookup-updated">—</dd></div>
+                  <div><dt>Notes</dt><dd id="lookup-notes">—</dd></div>
+                </dl>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-shell">
+        <p>© <span id="year"></span> Town of Glasgow, Virginia. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script>
+      window.siteConfig = {
+        serviceRequestsEndpoint: "https://servicerequests-821248093008.us-east4.run.app",
+        devNotificationEndpoint: "https://devnotification-821248093008.us-east4.run.app",
+        devNotificationDataUrl: "./assets/notifications/dev-message.json"
+      };
+    </script>
+    <script src="script.js"></script>
+    <script src="service-requests.js"></script>
+  </body>
+</html>

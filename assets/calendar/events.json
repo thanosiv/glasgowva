@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Town Council Meeting",
+    "date": "2026-08-11",
+    "time": "7:00 PM",
+    "location": "Town Hall Meeting Room",
+    "type": "meeting",
+    "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  },
+  {
+    "title": "Planning Commission Session",
+    "date": "2026-08-25",
+    "time": "6:30 PM",
+    "location": "Town Hall",
+    "type": "meeting"
+  },
+  {
+    "title": "Fall Festival",
+    "date": "2026-08-15",
+    "time": "10:00 AM",
+    "location": "Riverfront Park",
+    "type": "event"
+  },
+  {
+    "title": "Budget Workshop",
+    "date": "2026-09-18",
+    "time": "5:30 PM",
+    "location": "Town Hall",
+    "type": "event"
+  },
+  {
+    "title": "Volunteer Trail Cleanup",
+    "date": "2026-8-30",
+    "time": "9:00 AM",
+    "location": "James River Wilderness Area",
+    "type": "event"
+  }
+]

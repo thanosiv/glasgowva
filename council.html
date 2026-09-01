@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/gif" href="assets/images/us-vaglg.gif" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Glasgow Town Council information, meeting guidance, and public resources in an accessible, mobile-first format." />
+    <title>Town Council | Glasgow, Virginia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div data-include="header.html"></div>
+
+    <main id="main-content">
+      <section class="section">
+        <div class="container">
+          <nav aria-label="Breadcrumb" class="breadcrumb-nav">
+            <ol class="breadcrumbs">
+              <li><a href="index.html">Home</a></li>
+              <li aria-current="page">Government</li>
+            </ol>
+          </nav>
+        </div>
+      </section>
+
+      <section class="section alt" aria-labelledby="council-members-title">
+        <div class="container">
+          <div class="section-header">
+            <p class="eyebrow">Leadership and Committees</p>
+          </div>
+
+          <div id="council-members" class="council-type-list" aria-live="polite">
+            <article class="card">
+              <p>Loading council member information…</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-shell">
+        <p>© <span id="year"></span> Town of Glasgow, Virginia. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script>
+      window.siteConfig = {
+        googleStorageBucket: "glasgow-va",
+        councilDataPrefix: "council/",
+        councilImagePrefix: "images/council/",
+        councilDataFile: "council-members.json",
+        councilApiEndpoint: "https://councilimages-821248093008.us-east4.run.app",
+        councilImagesEndpoint: "https://councilimages-821248093008.us-east4.run.app",
+        devNotificationEndpoint: "https://devnotification-821248093008.us-east4.run.app",
+        devNotificationDataUrl: "./assets/notifications/dev-message.json"
+      };
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+    <script src="council.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
