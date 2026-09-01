@@ -33,13 +33,16 @@ This project is served as a static front-end with live Google Cloud Run / Cloud 
 - Admin functions require an `Authorization: Bearer <token>` header.
 - The server validates the signed session token against the secret configured on the function.
 - Protected functions reject missing, expired, or invalid tokens with `401 Unauthorized`.
+- `adminusers` derives the caller identity from the signed token, not from browser-supplied role arguments.
+- Admin users can list, create, edit, and activate/deactivate all dashboard users.
+- Non-admin users can only fetch and edit their own user record, including password changes.
 - Public read-only pages do not require admin authentication.
 - Browser state, DOM visibility, or CSS class state is never trusted as proof of authentication.
 - No raw shared secret is accepted directly from the browser for admin actions.
 
 ### Current deployed function set
 - `adminlogin` — issues signed admin session tokens.
-- `adminusers` — manages dashboard users and protected admin records.
+- `adminusers` — manages dashboard users; full user management is admin-only, while non-admin users are limited to their own account record.
 - `publicnotices` — public GET access; admin save/update requires validated session auth.
 - `calendarwrite` — creates and updates Google Calendar events; requires validated session auth.
 - `servicerequests` — public create/lookup; protected admin status updates require validated session auth.

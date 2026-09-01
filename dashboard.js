@@ -16,6 +16,10 @@ const userManagementState = {
   showInactive: false,
 };
 
+const dashboardSessionState = {
+  payload: null,
+};
+
 const HEADER_INCLUDE_FALLBACK = `
 <section id="site-dev-notification" class="site-dev-notification hidden" aria-live="polite" role="status">
   <div class="container">
@@ -231,6 +235,45 @@ function isDashboardTokenExpired(token) {
   }
 
   return expMs <= Date.now();
+}
+
+function getDashboardSessionPayload() {
+  return dashboardSessionState.payload;
+}
+
+function isDashboardAdmin() {
+  const payload = getDashboardSessionPayload();
+  return payload?.admin === true || String(payload?.role || '').toLowerCase() === 'admin';
+}
+
+function getDashboardUsername() {
+  return String(getDashboardSessionPayload()?.username || '').trim().toLowerCase();
+}
+
+function canManageTargetUser(user) {
+  if (!user || typeof user !== 'object') return false;
+  if (isDashboardAdmin()) return true;
+  return String(user.username || '').trim().toLowerCase() === getDashboardUsername();
+}
+
+function syncUserManagementAccess() {
+  const addButton = document.getElementById('user-add-button');
+  const showInactiveLabel = document.getElementById('user-show-inactive')?.closest('label');
+  const panelCopy = document.querySelector('#users-panel .panel-copy p');
+
+  if (addButton) {
+    addButton.classList.toggle('hidden', !isDashboardAdmin());
+  }
+
+  if (showInactiveLabel) {
+    showInactiveLabel.classList.toggle('hidden', !isDashboardAdmin());
+  }
+
+  if (panelCopy) {
+    panelCopy.textContent = isDashboardAdmin()
+      ? 'Manage dashboard access for staff users, including admin status and inactive accounts.'
+      : 'Review and update your account details, including your password.';
+  }
 }
 
 function ensureDashboardAuth() {
@@ -649,6 +692,11 @@ function openUserModal(user = null) {
   const form = document.getElementById('user-form');
   if (!modal || !form) return;
 
+  if (!isDashboardAdmin()) {
+    if (!user) return;
+    if (!canManageTargetUser(user)) return;
+  }
+
   form.reset();
   const userIdInput = document.getElementById('user-id');
   const firstNameInput = document.getElementById('user-first-name');
@@ -659,6 +707,9 @@ function openUserModal(user = null) {
   const roleInput = document.getElementById('user-role');
   const activeInput = document.getElementById('user-active');
   const modalTitle = document.getElementById('user-modal-title');
+  const roleGroup = roleInput?.closest('.form-group');
+  const activeGroup = activeInput?.closest('.form-group');
+  const isAdmin = isDashboardAdmin();
 
   if (user) {
     userIdInput.value = String(user.id || '');
@@ -673,8 +724,10 @@ function openUserModal(user = null) {
     passwordConfirmInput.placeholder = 'Leave blank to keep current password';
     passwordInput.required = false;
     passwordConfirmInput.required = false;
-    modalTitle.textContent = 'Edit user';
+    modalTitle.textContent = isAdmin ? 'Edit user' : 'My account';
   } else {
+    if (!isAdmin) return;
+
     userIdInput.value = '';
     firstNameInput.value = '';
     lastNameInput.value = '';
@@ -689,6 +742,17 @@ function openUserModal(user = null) {
     passwordConfirmInput.required = true;
     modalTitle.textContent = 'Add user';
   }
+
+  if (roleInput) {
+    roleInput.disabled = !isAdmin;
+  }
+
+  if (activeInput) {
+    activeInput.disabled = !isAdmin;
+  }
+
+  roleGroup?.classList.toggle('hidden', !isAdmin);
+  activeGroup?.classList.toggle('hidden', !isAdmin);
 
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
@@ -713,6 +777,7 @@ async function saveUser() {
   const confirmPassword = document.getElementById('user-password-confirm')?.value || '';
   const role = document.getElementById('user-role')?.value || 'staff';
   const active = document.getElementById('user-active')?.checked !== false;
+  const isAdmin = isDashboardAdmin();
 
   if (!username) {
     updateUserStatus('Username is required.', 'error');
@@ -742,8 +807,7 @@ async function saveUser() {
         lastName,
         username,
         ...(password ? { password } : {}),
-        role,
-        active,
+        ...(isAdmin ? { role, active } : {}),
       },
     };
 
@@ -773,6 +837,7 @@ async function saveUser() {
 function renderUsersList() {
   const list = document.getElementById('users-list');
   const showInactive = document.getElementById('user-show-inactive')?.checked;
+  const isAdmin = isDashboardAdmin();
   if (!list) return;
 
   const visibleUsers = userManagementState.users.filter((user) => showInactive || user.active !== false);
@@ -786,6 +851,9 @@ function renderUsersList() {
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Unknown user';
     const role = user.role === 'admin' ? 'Admin' : 'Staff';
     const activeLabel = user.active === false ? 'Inactive' : 'Active';
+    const actionButton = isAdmin
+      ? `<button type="button" class="button small-button" data-user-toggle="${escapeHtml(user.id || '')}">${user.active === false ? 'Activate' : 'Deactivate'}</button>`
+      : '';
     return `
       <article class="card user-row-card" data-user-edit="${escapeHtml(user.id || '')}" tabindex="0" role="button" aria-label="Edit user ${escapeHtml(user.username || 'user')}">
         <div class="user-row">
@@ -794,7 +862,7 @@ function renderUsersList() {
             <div class="user-meta">${escapeHtml(user.username || 'Unknown')} • ${escapeHtml(role)} • ${escapeHtml(activeLabel)}</div>
           </div>
           <div class="user-actions">
-            <button type="button" class="button small-button" data-user-toggle="${escapeHtml(user.id || '')}">${user.active === false ? 'Activate' : 'Deactivate'}</button>
+            ${actionButton}
           </div>
         </div>
       </article>
@@ -806,7 +874,7 @@ function renderUsersList() {
   list.querySelectorAll('[data-user-edit]').forEach((card) => {
     const userId = card.getAttribute('data-user-edit');
     const target = userManagementState.users.find((user) => String(user.id || '') === String(userId || ''));
-    if (!target) return;
+    if (!target || !canManageTargetUser(target)) return;
 
     card.addEventListener('click', () => {
       openUserModal(target);
@@ -905,6 +973,7 @@ function attachDashboardEvents() {
   });
 
   userAddButton?.addEventListener('click', () => {
+    if (!isDashboardAdmin()) return;
     openUserModal();
   });
 
@@ -2206,6 +2275,7 @@ function showDashboard(token) {
   }
 
   sessionStorage.setItem('dashboard_token', trimmedToken);
+  dashboardSessionState.payload = decodeDashboardTokenPayload(trimmedToken);
   document.getElementById('login-screen')?.classList.add('hidden');
   const dash = document.getElementById('dashboard-screen');
   if (dash) dash.classList.remove('hidden');
@@ -2213,6 +2283,7 @@ function showDashboard(token) {
   // Inject token into siteConfig for upload auth
   if (window.siteConfig) window.siteConfig.uploadToken = token;
 
+  syncUserManagementAccess();
   populatePrefixSelect();
   attachDashboardEvents();
   attachServiceRequestFilter();
