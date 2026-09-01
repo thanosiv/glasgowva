@@ -84,7 +84,25 @@ async function fetchDocumentsFromApi(apiEndpoint, prefix = "") {
   }
 
   const payload = await response.json();
-  return Array.isArray(payload.documents) ? payload.documents : [];
+  return Array.isArray(payload.documents)
+    ? payload.documents.map((item) => {
+        const parsedDate = parseDocumentDate(item.date) || parseDocumentDate(item.name) || null;
+        const hasUsableDateLabel = String(item.dateLabel || "").trim() && String(item.dateLabel || "").trim().toLowerCase() !== "unknown";
+        return {
+          ...item,
+          date: parsedDate,
+          typePath: item.typePath || item.typeLabel || "General",
+          typeLabel: item.typeLabel || item.typePath || "General",
+          dateLabel: hasUsableDateLabel
+            ? item.dateLabel
+            : parsedDate?.toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+              }) || "Unknown"
+        };
+      })
+    : [];
 }
 
 const manifestUrl = "assets/documents/document-index.json";
@@ -495,11 +513,11 @@ function renderDocumentList() {
   const filtered = documentsState.items.filter((item) => {
     if (documentsState.type !== "all" && item.typePath !== documentsState.type) return false;
     if (documentsState.from) {
-      const fromDate = new Date(documentsState.from);
+      const fromDate = parseLocalDate(documentsState.from);
       if (!item.date || item.date < fromDate) return false;
     }
     if (documentsState.to) {
-      const toDate = new Date(documentsState.to);
+      const toDate = parseLocalDate(documentsState.to);
       if (!item.date || item.date > toDate) return false;
     }
     return true;
