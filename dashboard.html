@@ -400,11 +400,13 @@
             </div>
             <div class="form-group full-width">
               <label for="user-password">Password</label>
-              <input id="user-password" type="password" placeholder="Enter a new password" />
+              <input id="user-password" type="password" placeholder="Enter a new password" minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" title="Use at least 12 characters with one uppercase letter, one lowercase letter, one number, and one special character." />
+              <p id="user-password-help" class="field-help">Use at least 12 characters with one uppercase letter, one lowercase letter, one number, and one special character.</p>
             </div>
             <div class="form-group full-width">
               <label for="user-password-confirm">Confirm password</label>
-              <input id="user-password-confirm" type="password" placeholder="Re-enter password" />
+              <input id="user-password-confirm" type="password" placeholder="Re-enter password" minlength="12" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" title="Use at least 12 characters with one uppercase letter, one lowercase letter, one number, and one special character." />
+              <p id="user-password-message" class="field-message status-error" aria-live="polite"></p>
             </div>
             <div class="form-group">
               <label for="user-role">Role</label>

@@ -708,6 +708,33 @@ iframe {
   outline: none;
 }
 
+.form-group input:invalid,
+.form-group select:invalid,
+.form-group textarea:invalid {
+  border-color: rgba(154, 47, 47, 0.6);
+}
+
+.form-group input:invalid:focus,
+.form-group select:invalid:focus,
+.form-group textarea:invalid:focus {
+  box-shadow: 0 0 0 4px rgba(154, 47, 47, 0.1);
+}
+
+.field-help,
+.field-message {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.field-help {
+  color: var(--muted);
+}
+
+.field-message:empty {
+  display: none;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;

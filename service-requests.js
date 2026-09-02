@@ -234,7 +234,6 @@ function attachServiceRequestHandlers() {
       const selectedFile = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
       const createdAt = new Date().toISOString();
       const payload = {
-        id: generateTicketId(),
         name: document.getElementById('service-name')?.value || '',
         email: document.getElementById('service-email')?.value || '',
         phone: document.getElementById('service-phone')?.value || '',
