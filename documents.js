@@ -523,6 +523,13 @@ function renderDocumentList() {
     return true;
   });
 
+  filtered.sort((a, b) => {
+    const aTime = a.date instanceof Date ? a.date.getTime() : Number.POSITIVE_INFINITY;
+    const bTime = b.date instanceof Date ? b.date.getTime() : Number.POSITIVE_INFINITY;
+    if (aTime !== bTime) return aTime - bTime;
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+
   summary.textContent = `${filtered.length} document${filtered.length === 1 ? "" : "s"} found`;
 
   if (filtered.length === 0) {

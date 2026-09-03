@@ -1046,7 +1046,12 @@ function attachDashboardEvents() {
 
       updateUploadStatus('Uploading…', 'info');
 
-      const token = window.siteConfig?.uploadToken;
+      const token = getDashboardToken();
+      if (!token) {
+        updateUploadStatus('Session missing or expired. Please sign in again.', 'error');
+        ensureDashboardAuth();
+        return;
+      }
 
       try {
         const endpoint = getRequiredEndpoint('uploadEndpoint', 'Upload');
@@ -1061,7 +1066,8 @@ function attachDashboardEvents() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getDashboardToken()}`,
+            'Authorization': `Bearer ${token}`,
+            'X-Session-Token': token,
           },
           body: JSON.stringify({
             fileName: file.name,
@@ -1073,7 +1079,13 @@ function attachDashboardEvents() {
 
         const result = await response.json();
         if (!response.ok) {
-          throw new Error(result.error || 'Upload failed');
+          const messageParts = [
+            String(result?.error || 'Upload failed').trim(),
+            result?.code ? `code: ${String(result.code)}` : '',
+            String(result?.reason || '').trim(),
+            String(result?.details || '').trim(),
+          ].filter(Boolean);
+          throw new Error(messageParts.join(' | '));
         }
 
         updateUploadStatus(`Uploaded successfully: ${result.url}`, 'success');
