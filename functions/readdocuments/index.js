@@ -113,6 +113,42 @@ function toPublicUrl(bucketName, objectName) {
   return `https://storage.googleapis.com/${encodeURIComponent(bucketName)}/${encodedPath}`;
 }
 
+function toNormalizedDate(yearValue, monthValue, dayValue) {
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (Number.isNaN(parsed.getTime())) return null;
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) {
+    return null;
+  }
+
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function extractNormalizedDatesFromText(value) {
+  const text = String(value || '');
+  const matches = new Set();
+
+  const yearFirstPattern = /(\d{4})[._-](\d{1,2})[._-](\d{1,2})/g;
+  let yearFirstMatch;
+  while ((yearFirstMatch = yearFirstPattern.exec(text)) !== null) {
+    const normalized = toNormalizedDate(yearFirstMatch[1], yearFirstMatch[2], yearFirstMatch[3]);
+    if (normalized) matches.add(normalized);
+  }
+
+  const monthFirstPattern = /(\d{1,2})[._-](\d{1,2})[._-](\d{4})/g;
+  let monthFirstMatch;
+  while ((monthFirstMatch = monthFirstPattern.exec(text)) !== null) {
+    const normalized = toNormalizedDate(monthFirstMatch[3], monthFirstMatch[1], monthFirstMatch[2]);
+    if (normalized) matches.add(normalized);
+  }
+
+  return Array.from(matches);
+}
+
 function mapStorageFilesToDocuments(bucketName, files) {
   return files
     .map((file) => String(file?.name || '').replace(/^\/+/, ''))
@@ -162,17 +198,17 @@ async function resolveAgendaUrl(storage, bucketName, normalizedDate) {
 
 async function resolveMinutesUrl(storage, bucketName, normalizedDate) {
   const minutesPrefix = normalizePrefix(MINUTES_PREFIX);
-  const baseFileName = `minutes_${normalizedDate}`;
-  const objectPrefix = `${minutesPrefix}${baseFileName}`;
 
   const bucket = storage.bucket(bucketName);
-  const [files] = await bucket.getFiles({ prefix: objectPrefix });
+  const [files] = await bucket.getFiles({ prefix: minutesPrefix });
   const names = files
     .map((file) => String(file?.name || '').replace(/^\/+/, ''))
-    .filter((name) => name && !name.endsWith('/'));
+    .filter((name) => name && !name.endsWith('/') && name.startsWith(minutesPrefix));
 
-  const exactStemPattern = new RegExp(`(^|/)${baseFileName}(?:[._-]|\\.|$)`, 'i');
-  const matchedName = names.find((name) => exactStemPattern.test(name));
+  const matchedName = names.find((name) => {
+    const dates = extractNormalizedDatesFromText(name);
+    return dates.includes(normalizedDate);
+  });
 
   return matchedName ? toPublicUrl(bucketName, matchedName) : null;
 }

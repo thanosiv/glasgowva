@@ -713,6 +713,42 @@ function normalizeStoragePrefix(prefix) {
   return cleaned.endsWith("/") ? cleaned : `${cleaned}/`;
 }
 
+function toNormalizedDate(yearValue, monthValue, dayValue) {
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (Number.isNaN(parsed.getTime())) return null;
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) {
+    return null;
+  }
+
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function extractNormalizedDatesFromText(value) {
+  const text = String(value || "");
+  const matches = new Set();
+
+  const yearFirstPattern = /(\d{4})[._-](\d{1,2})[._-](\d{1,2})/g;
+  let yearFirstMatch;
+  while ((yearFirstMatch = yearFirstPattern.exec(text)) !== null) {
+    const normalized = toNormalizedDate(yearFirstMatch[1], yearFirstMatch[2], yearFirstMatch[3]);
+    if (normalized) matches.add(normalized);
+  }
+
+  const monthFirstPattern = /(\d{1,2})[._-](\d{1,2})[._-](\d{4})/g;
+  let monthFirstMatch;
+  while ((monthFirstMatch = monthFirstPattern.exec(text)) !== null) {
+    const normalized = toNormalizedDate(monthFirstMatch[3], monthFirstMatch[1], monthFirstMatch[2]);
+    if (normalized) matches.add(normalized);
+  }
+
+  return Array.from(matches);
+}
+
 async function fetchAgendaUrlFromDocumentsApi(normalizedDate, retryWithoutKey = false) {
   const documentsApiEndpoint = String(window.siteConfig?.documentsApiEndpoint || "").trim();
   if (documentsApiEndpoint) {
@@ -808,11 +844,8 @@ async function fetchMinutesUrlFromDocumentsApi(normalizedDate, retryWithoutKey =
   );
   const apiKey = window.siteConfig?.googleApiKey || "";
 
-  const baseFileName = `minutes_${normalizedDate}`;
-  const objectPrefix = `${minutesPrefix}${baseFileName}`;
-
   const params = new URLSearchParams();
-  params.set("prefix", objectPrefix);
+  params.set("prefix", minutesPrefix);
   params.set("fields", "items(name)");
   if (apiKey && !retryWithoutKey) params.set("key", apiKey);
 
@@ -831,12 +864,12 @@ async function fetchMinutesUrlFromDocumentsApi(normalizedDate, retryWithoutKey =
     const data = await response.json();
     const items = Array.isArray(data.items) ? data.items : [];
 
-    // Prefer exact date stem matches and allow any extension/suffix.
-    const exactStemPattern = new RegExp(`(^|/)${baseFileName}(?:[._-]|\\.|$)`, "i");
     const matched = items.find((item) => {
       const name = String(item?.name || "");
       if (!name || name.endsWith("/")) return false;
-      return exactStemPattern.test(name);
+      if (!name.startsWith(minutesPrefix)) return false;
+      const dates = extractNormalizedDatesFromText(name);
+      return dates.includes(normalizedDate);
     });
 
     if (!matched) return null;
