@@ -132,14 +132,14 @@ function extractNormalizedDatesFromText(value) {
   const text = String(value || '');
   const matches = new Set();
 
-  const yearFirstPattern = /(\d{4})[._-](\d{1,2})[._-](\d{1,2})/g;
+  const yearFirstPattern = /(\d{4})[._\-\s]+(\d{1,2})[._\-\s]+(\d{1,2})/g;
   let yearFirstMatch;
   while ((yearFirstMatch = yearFirstPattern.exec(text)) !== null) {
     const normalized = toNormalizedDate(yearFirstMatch[1], yearFirstMatch[2], yearFirstMatch[3]);
     if (normalized) matches.add(normalized);
   }
 
-  const monthFirstPattern = /(\d{1,2})[._-](\d{1,2})[._-](\d{4})/g;
+  const monthFirstPattern = /(\d{1,2})[._\-\s]+(\d{1,2})[._\-\s]+(\d{4})/g;
   let monthFirstMatch;
   while ((monthFirstMatch = monthFirstPattern.exec(text)) !== null) {
     const normalized = toNormalizedDate(monthFirstMatch[3], monthFirstMatch[1], monthFirstMatch[2]);

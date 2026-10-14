@@ -732,14 +732,14 @@ function extractNormalizedDatesFromText(value) {
   const text = String(value || "");
   const matches = new Set();
 
-  const yearFirstPattern = /(\d{4})[._-](\d{1,2})[._-](\d{1,2})/g;
+  const yearFirstPattern = /(\d{4})[._\-\s]+(\d{1,2})[._\-\s]+(\d{1,2})/g;
   let yearFirstMatch;
   while ((yearFirstMatch = yearFirstPattern.exec(text)) !== null) {
     const normalized = toNormalizedDate(yearFirstMatch[1], yearFirstMatch[2], yearFirstMatch[3]);
     if (normalized) matches.add(normalized);
   }
 
-  const monthFirstPattern = /(\d{1,2})[._-](\d{1,2})[._-](\d{4})/g;
+  const monthFirstPattern = /(\d{1,2})[._\-\s]+(\d{1,2})[._\-\s]+(\d{4})/g;
   let monthFirstMatch;
   while ((monthFirstMatch = monthFirstPattern.exec(text)) !== null) {
     const normalized = toNormalizedDate(monthFirstMatch[3], monthFirstMatch[1], monthFirstMatch[2]);
@@ -747,6 +747,46 @@ function extractNormalizedDatesFromText(value) {
   }
 
   return Array.from(matches);
+}
+
+function safeDecodeForDateParsing(value) {
+  const text = String(value || "");
+  if (!text) return "";
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
+function resolveMinutesUrlFromDocumentsPayload(payload, normalizedDate) {
+  const documents = Array.isArray(payload?.documents) ? payload.documents : [];
+  if (documents.length === 0) return null;
+
+  const expectedMinutesPrefix = normalizeStoragePrefix(
+    window.siteConfig?.googleMinutesStoragePrefix || "council/minutes/"
+  ).toLowerCase();
+
+  for (const doc of documents) {
+    const url = String(doc?.url || "").trim();
+    if (!url) continue;
+
+    const typePath = String(doc?.typePath || doc?.typeLabel || "").toLowerCase();
+    const docPath = safeDecodeForDateParsing(doc?.path || "").toLowerCase();
+    const decodedUrl = safeDecodeForDateParsing(url).toLowerCase();
+
+    const inMinutesDirectory =
+      typePath.includes("minutes")
+      || docPath.startsWith(expectedMinutesPrefix)
+      || decodedUrl.includes(`/${expectedMinutesPrefix}`);
+    if (!inMinutesDirectory) continue;
+
+    const dateSources = [doc?.name, doc?.path, url, decodedUrl, docPath];
+    const matchesDate = dateSources.some((source) => extractNormalizedDatesFromText(source).includes(normalizedDate));
+    if (matchesDate) return url;
+  }
+
+  return null;
 }
 
 async function fetchAgendaUrlFromDocumentsApi(normalizedDate, retryWithoutKey = false) {
@@ -828,7 +868,14 @@ async function fetchMinutesUrlFromDocumentsApi(normalizedDate, retryWithoutKey =
       const response = await fetch(`${documentsApiEndpoint}${connector}${params.toString()}`);
       if (response.ok) {
         const payload = await response.json();
-        return payload?.url ? String(payload.url) : null;
+        if (payload?.url) {
+          return String(payload.url);
+        }
+
+        const payloadResolvedUrl = resolveMinutesUrlFromDocumentsPayload(payload, normalizedDate);
+        if (payloadResolvedUrl) {
+          return payloadResolvedUrl;
+        }
       }
     } catch {
       // Fall through to legacy direct GCS listing path.
