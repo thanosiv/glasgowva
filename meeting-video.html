@@ -124,6 +124,15 @@
     </main>
 
     <script>
+      window.siteConfig = {
+        analyticsEndpoint: "https://analytics-821248093008.us-east4.run.app"
+      };
+      if (window.__SITE_CONFIG__ && typeof window.__SITE_CONFIG__ === "object") {
+        window.siteConfig = { ...window.siteConfig, ...window.__SITE_CONFIG__ };
+      }
+    </script>
+
+    <script>
       function normalizeDateLabel(value) {
         if (!value) return "";
 
@@ -272,5 +281,6 @@
         statusEl.classList.add("hidden");
       })();
     </script>
+    <script src="analytics.js"></script>
   </body>
 </html>

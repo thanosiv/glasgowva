@@ -72,12 +72,14 @@
         documentsApiEndpoint: "https://readdocuments-821248093008.us-east4.run.app",
         documentIndexUrl: "assets/documents/document-index.json",
         devNotificationEndpoint: "https://devnotification-821248093008.us-east4.run.app",
-        devNotificationDataUrl: "./assets/notifications/dev-message.json"
+        devNotificationDataUrl: "./assets/notifications/dev-message.json",
+        analyticsEndpoint: "https://analytics-821248093008.us-east4.run.app"
       };
       if (window.__SITE_CONFIG__ && typeof window.__SITE_CONFIG__ === "object") {
         window.siteConfig = { ...window.siteConfig, ...window.__SITE_CONFIG__ };
       }
     </script>
     <script src="documents.js"></script>
+    <script src="analytics.js"></script>
   </body>
 </html>

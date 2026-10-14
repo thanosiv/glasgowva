@@ -622,6 +622,8 @@ async function openEventModal(eventItem) {
   const agendaUrl = await loadAgendaUrlForModal(eventItem);
   if (agendaUrl) {
     agenda.href = agendaUrl;
+    agenda.dataset.analyticsKind = "document";
+    agenda.dataset.analyticsLabel = "View agenda document";
     agendaWrap.classList.remove("hidden");
   }
 
@@ -629,6 +631,8 @@ async function openEventModal(eventItem) {
   const minutesUrl = await loadMinutesUrlForModal(eventItem);
   if (minutesUrl) {
     minutes.href = minutesUrl;
+    minutes.dataset.analyticsKind = "document";
+    minutes.dataset.analyticsLabel = "View minutes document";
     minutesWrap.classList.remove("hidden");
   }
 
@@ -636,6 +640,8 @@ async function openEventModal(eventItem) {
   if (videoUrl) {
     video.href = buildVideoViewerUrl(videoUrl, eventItem);
     video.textContent = eventItem.type === "meeting" ? "Watch meeting video" : "Watch recording";
+    video.dataset.analyticsKind = "video";
+    video.dataset.analyticsLabel = video.textContent;
     videoWrap.classList.remove("hidden");
   } else {
     videoWrap.classList.add("hidden");
