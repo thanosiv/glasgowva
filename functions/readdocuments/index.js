@@ -4,6 +4,7 @@ const BUCKET_NAME = process.env.BUCKET_NAME || process.env.GCS_BUCKET || 'glasgo
 const DOCUMENTS_PREFIX = process.env.DOCUMENTS_PREFIX || '';
 const AGENDA_PREFIX = process.env.AGENDA_PREFIX || 'council/agendas/';
 const MINUTES_PREFIX = process.env.MINUTES_PREFIX || 'council/minutes/';
+const MEETING_VIDEOS_PREFIX = process.env.MEETING_VIDEOS_PREFIX || 'meetingvideos/';
 
 function createStorageFromEnv() {
   const serviceAccountJson = process.env.GCS_SERVICE_ACCOUNT_JSON;
@@ -213,6 +214,23 @@ async function resolveMinutesUrl(storage, bucketName, normalizedDate) {
   return matchedName ? toPublicUrl(bucketName, matchedName) : null;
 }
 
+async function resolveMeetingVideoUrl(storage, bucketName, normalizedDate) {
+  const videoPrefix = normalizePrefix(MEETING_VIDEOS_PREFIX);
+
+  const bucket = storage.bucket(bucketName);
+  const [files] = await bucket.getFiles({ prefix: videoPrefix });
+  const names = files
+    .map((file) => String(file?.name || '').replace(/^\/+/, ''))
+    .filter((name) => name && !name.endsWith('/') && name.startsWith(videoPrefix));
+
+  const matchedName = names.find((name) => {
+    const dates = extractNormalizedDatesFromText(name);
+    return dates.includes(normalizedDate);
+  });
+
+  return matchedName ? toPublicUrl(bucketName, matchedName) : null;
+}
+
 exports.readDocuments = async (req, res) => {
   setCorsHeaders(res);
 
@@ -251,6 +269,16 @@ exports.readDocuments = async (req, res) => {
       }
 
       const url = await resolveMinutesUrl(storage, bucketName, date);
+      return res.status(200).json({ url });
+    }
+
+    if (action === 'video') {
+      const date = String(req.query?.date || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ error: 'date must be in YYYY-MM-DD format' });
+      }
+
+      const url = await resolveMeetingVideoUrl(storage, bucketName, date);
       return res.status(200).json({ url });
     }
 

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meeting Video Viewer</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f7fb;
+        --surface: #ffffff;
+        --text: #12263a;
+        --muted: #4d5d6b;
+        --accent: #005a9c;
+        --border: #d9e3ee;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(180deg, #eef4fb 0%, var(--bg) 60%);
+        color: var(--text);
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+
+      .viewer-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 18px 32px rgba(10, 38, 64, 0.08);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.4rem;
+      }
+
+      .meta {
+        margin: 0 0 18px;
+        color: var(--muted);
+      }
+
+      .player-frame {
+        width: 100%;
+        min-height: 340px;
+        border: 0;
+        border-radius: 10px;
+        background: #000;
+      }
+
+      video {
+        width: 100%;
+        max-height: 78vh;
+        border-radius: 10px;
+        background: #000;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .actions {
+        margin-top: 14px;
+      }
+
+      .actions a {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .status {
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #f8fbff;
+      }
+
+      @media (max-width: 640px) {
+        .viewer-card {
+          padding: 14px;
+        }
+
+        .player-frame {
+          min-height: 220px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="viewer-card" aria-live="polite">
+        <h1 id="video-title">Meeting Video</h1>
+        <p id="video-meta" class="meta"></p>
+
+        <p id="video-status" class="status">Loading video...</p>
+
+        <video id="video-player" class="hidden" controls preload="metadata">
+          <source id="video-source" src="" />
+          Your browser does not support this video format.
+        </video>
+
+        <iframe
+          id="video-embed"
+          class="player-frame hidden"
+          title="Meeting recording"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+        ></iframe>
+
+        <p class="actions hidden" id="video-actions">
+          Having trouble? <a id="video-open-link" href="#" target="_blank" rel="noreferrer noopener">Open the video file directly</a>.
+        </p>
+      </section>
+    </main>
+
+    <script>
+      function normalizeDateLabel(value) {
+        if (!value) return "";
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return String(value);
+        return parsed.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+      }
+
+      function parseYoutubeId(urlText) {
+        try {
+          const url = new URL(urlText);
+          if (url.hostname.includes("youtu.be")) {
+            return url.pathname.replace(/^\//, "") || null;
+          }
+          if (url.hostname.includes("youtube.com")) {
+            return url.searchParams.get("v") || null;
+          }
+        } catch {
+          return null;
+        }
+        return null;
+      }
+
+      function isHttpUrl(value) {
+        try {
+          const parsed = new URL(value);
+          return parsed.protocol === "http:" || parsed.protocol === "https:";
+        } catch {
+          return false;
+        }
+      }
+
+      function getPayloadById(payloadId) {
+        if (!payloadId) return null;
+        try {
+          const raw = localStorage.getItem(`meetingVideoPayload:${payloadId}`);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" ? parsed : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function getLastPayload() {
+        try {
+          const raw = localStorage.getItem("meetingVideoPayload:last");
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" ? parsed : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function parseHashParams() {
+        const hash = String(window.location.hash || "").replace(/^#/, "").trim();
+        if (!hash) return null;
+        const params = new URLSearchParams(hash);
+        const src = String(params.get("src") || "").trim();
+        const title = String(params.get("title") || "").trim();
+        const date = String(params.get("date") || "").trim();
+        return { src, title, date };
+      }
+
+      (function initMeetingVideoViewer() {
+        const params = new URLSearchParams(window.location.search);
+        const payloadId = String(params.get("payloadId") || "").trim();
+        const fromQuery = {
+          src: String(params.get("src") || "").trim(),
+          title: String(params.get("title") || "").trim(),
+          date: String(params.get("date") || "").trim()
+        };
+        const fromHash = parseHashParams();
+        const fromPayloadId = getPayloadById(payloadId);
+        const fromLast = getLastPayload();
+
+        const resolved = {
+          src: fromQuery.src || fromHash?.src || fromPayloadId?.src || fromLast?.src || "",
+          title: fromQuery.title || fromHash?.title || fromPayloadId?.title || fromLast?.title || "Meeting Video",
+          date: fromQuery.date || fromHash?.date || fromPayloadId?.date || fromLast?.date || ""
+        };
+
+        const src = resolved.src;
+        const title = String(resolved.title || "Meeting Video").trim();
+        const date = normalizeDateLabel(resolved.date);
+
+        const titleEl = document.getElementById("video-title");
+        const metaEl = document.getElementById("video-meta");
+        const statusEl = document.getElementById("video-status");
+        const videoEl = document.getElementById("video-player");
+        const sourceEl = document.getElementById("video-source");
+        const embedEl = document.getElementById("video-embed");
+        const actionsEl = document.getElementById("video-actions");
+        const openLinkEl = document.getElementById("video-open-link");
+
+        if (!titleEl || !metaEl || !statusEl || !videoEl || !sourceEl || !embedEl || !actionsEl || !openLinkEl) {
+          return;
+        }
+
+        titleEl.textContent = title || "Meeting Video";
+        metaEl.textContent = date ? `Date: ${date}` : "";
+
+        if (!src || !isHttpUrl(src)) {
+          statusEl.textContent = "No valid video source was provided.";
+          return;
+        }
+
+        openLinkEl.href = src;
+        actionsEl.classList.remove("hidden");
+
+        const youtubeId = parseYoutubeId(src);
+        if (youtubeId) {
+          embedEl.src = `https://www.youtube.com/embed/${encodeURIComponent(youtubeId)}`;
+          embedEl.classList.remove("hidden");
+          statusEl.classList.add("hidden");
+          return;
+        }
+
+        sourceEl.src = src;
+        videoEl.load();
+        videoEl.classList.remove("hidden");
+        statusEl.classList.add("hidden");
+      })();
+    </script>
+  </body>
+</html>

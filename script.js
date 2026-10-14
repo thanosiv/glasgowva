@@ -632,8 +632,10 @@ async function openEventModal(eventItem) {
     minutesWrap.classList.remove("hidden");
   }
 
-  if (eventItem.videoUrl) {
-    video.href = eventItem.videoUrl;
+  const videoUrl = await loadVideoUrlForModal(eventItem);
+  if (videoUrl) {
+    video.href = buildVideoViewerUrl(videoUrl, eventItem);
+    video.textContent = eventItem.type === "meeting" ? "Watch meeting video" : "Watch recording";
     videoWrap.classList.remove("hidden");
   } else {
     videoWrap.classList.add("hidden");
@@ -674,6 +676,7 @@ function normalizeDateString(dateString) {
 
 const agendaLookupCache = new Map();
 const minutesLookupCache = new Map();
+const videoLookupCache = new Map();
 
 async function loadAgendaUrlForModal(eventItem) {
   if (!eventItem) return null;
@@ -705,6 +708,53 @@ async function loadMinutesUrlForModal(eventItem) {
   const resolvedUrl = await fetchMinutesUrlFromDocumentsApi(normalizedDate);
   minutesLookupCache.set(cacheKey, resolvedUrl);
   return resolvedUrl;
+}
+
+async function loadVideoUrlForModal(eventItem) {
+  if (!eventItem) return null;
+
+  if (eventItem.videoUrl) {
+    return String(eventItem.videoUrl).trim() || null;
+  }
+
+  if (String(eventItem.type || "").toLowerCase() !== "meeting") {
+    return null;
+  }
+
+  const normalizedDate = normalizeDateString(eventItem.date);
+  if (!normalizedDate) return null;
+
+  const cacheKey = `${eventItem.id || "unknown"}:${normalizedDate}`;
+  if (videoLookupCache.has(cacheKey)) {
+    return videoLookupCache.get(cacheKey);
+  }
+
+  const resolvedUrl = await fetchVideoUrlFromDocumentsApi(normalizedDate);
+  videoLookupCache.set(cacheKey, resolvedUrl);
+  return resolvedUrl;
+}
+
+function buildVideoViewerUrl(videoUrl, eventItem) {
+  const viewerPath = String(window.siteConfig?.meetingVideoViewerPath || "meeting-video.html").trim();
+  const viewerUrl = new URL(viewerPath, window.location.href);
+  const src = String(videoUrl || "").trim();
+  const title = eventItem?.title ? String(eventItem.title) : "";
+  const date = eventItem?.date ? normalizeDateString(eventItem.date) : "";
+
+  const payloadId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const payload = { src, title, date };
+  try {
+    localStorage.setItem(`meetingVideoPayload:${payloadId}`, JSON.stringify(payload));
+    localStorage.setItem("meetingVideoPayload:last", JSON.stringify(payload));
+  } catch {
+    // Ignore storage write failures in strict/private contexts.
+  }
+
+  viewerUrl.searchParams.set("payloadId", payloadId);
+  viewerUrl.searchParams.set("src", src);
+  if (title) viewerUrl.searchParams.set("title", title);
+  if (date) viewerUrl.searchParams.set("date", date);
+  return viewerUrl.toString();
 }
 
 function normalizeStoragePrefix(prefix) {
@@ -915,6 +965,71 @@ async function fetchMinutesUrlFromDocumentsApi(normalizedDate, retryWithoutKey =
       const name = String(item?.name || "");
       if (!name || name.endsWith("/")) return false;
       if (!name.startsWith(minutesPrefix)) return false;
+      const dates = extractNormalizedDatesFromText(name);
+      return dates.includes(normalizedDate);
+    });
+
+    if (!matched) return null;
+
+    const matchedPath = String(matched.name || "").replace(/^\/+/, "");
+    const encodedPath = matchedPath.split("/").map(encodeURIComponent).join("/");
+    return `https://storage.googleapis.com/${encodeURIComponent(bucketName)}/${encodedPath}`;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchVideoUrlFromDocumentsApi(normalizedDate, retryWithoutKey = false) {
+  const documentsApiEndpoint = String(window.siteConfig?.documentsApiEndpoint || "").trim();
+  if (documentsApiEndpoint) {
+    try {
+      const params = new URLSearchParams();
+      params.set("action", "video");
+      params.set("date", normalizedDate);
+      const connector = documentsApiEndpoint.includes("?") ? "&" : "?";
+      const response = await fetch(`${documentsApiEndpoint}${connector}${params.toString()}`);
+      if (response.ok) {
+        const payload = await response.json();
+        return payload?.url ? String(payload.url) : null;
+      }
+    } catch {
+      // Fall through to legacy direct GCS listing path.
+    }
+  }
+
+  const bucketName = window.siteConfig?.googleMeetingVideoStorageBucket
+    || window.siteConfig?.googleStorageBucket
+    || "glasgow-va";
+  const videoPrefix = normalizeStoragePrefix(
+    window.siteConfig?.googleMeetingVideoStoragePrefix
+      || "meetingvideos/"
+  );
+  const apiKey = window.siteConfig?.googleApiKey || "";
+
+  const params = new URLSearchParams();
+  params.set("prefix", videoPrefix);
+  params.set("fields", "items(name)");
+  if (apiKey && !retryWithoutKey) params.set("key", apiKey);
+
+  const requestUrl = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucketName)}/o?${params}`;
+
+  try {
+    const response = await fetch(requestUrl);
+    if ((response.status === 401 || response.status === 403) && apiKey && !retryWithoutKey) {
+      return fetchVideoUrlFromDocumentsApi(normalizedDate, true);
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+
+    const matched = items.find((item) => {
+      const name = String(item?.name || "");
+      if (!name || name.endsWith("/")) return false;
+      if (!name.startsWith(videoPrefix)) return false;
       const dates = extractNormalizedDatesFromText(name);
       return dates.includes(normalizedDate);
     });
