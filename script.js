@@ -332,7 +332,8 @@ async function loadCalendarItemsForMonth(fromDate, toDate) {
     description: item.description,
     eventLabelId: item.eventLabelId,
     videoUrl: item.videoUrl,
-    agendaUrl: item.agendaUrl || null
+    agendaUrl: item.agendaUrl || null,
+    minutesUrl: item.minutesUrl || null
   }, index));
 }
 
@@ -390,6 +391,7 @@ function normalizeCalendarItem(item, index) {
   const videoUrl = item.videoUrl || extractVideoUrl(rawDescription) || null;
   const description = cleanEventDescription(rawDescription, videoUrl);
   const agendaUrl = item.agendaUrl || null;
+  const minutesUrl = item.minutesUrl || null;
 
   let type = item.type;
   if (!type) {
@@ -414,7 +416,8 @@ function normalizeCalendarItem(item, index) {
     description,
     type,
     videoUrl,
-    agendaUrl
+    agendaUrl,
+    minutesUrl
   };
 }
 
@@ -593,10 +596,12 @@ async function openEventModal(eventItem) {
   const description = document.getElementById("event-modal-description");
   const agendaWrap = document.getElementById("event-modal-agenda-wrap");
   const agenda = document.getElementById("event-modal-agenda");
+  const minutesWrap = document.getElementById("event-modal-minutes-wrap");
+  const minutes = document.getElementById("event-modal-minutes");
   const videoWrap = document.getElementById("event-modal-video-wrap");
   const video = document.getElementById("event-modal-video");
 
-  if (!modal || !title || !date || !time || !type || !location || !description || !agendaWrap || !agenda || !videoWrap || !video) return;
+  if (!modal || !title || !date || !time || !type || !location || !description || !agendaWrap || !agenda || !minutesWrap || !minutes || !videoWrap || !video) return;
 
   title.textContent = eventItem.title || "Untitled event";
   date.textContent = formatDisplayDate(eventItem.date);
@@ -618,6 +623,13 @@ async function openEventModal(eventItem) {
   if (agendaUrl) {
     agenda.href = agendaUrl;
     agendaWrap.classList.remove("hidden");
+  }
+
+  minutesWrap.classList.add("hidden");
+  const minutesUrl = await loadMinutesUrlForModal(eventItem);
+  if (minutesUrl) {
+    minutes.href = minutesUrl;
+    minutesWrap.classList.remove("hidden");
   }
 
   if (eventItem.videoUrl) {
@@ -661,6 +673,7 @@ function normalizeDateString(dateString) {
 }
 
 const agendaLookupCache = new Map();
+const minutesLookupCache = new Map();
 
 async function loadAgendaUrlForModal(eventItem) {
   if (!eventItem) return null;
@@ -675,6 +688,22 @@ async function loadAgendaUrlForModal(eventItem) {
 
   const resolvedUrl = await fetchAgendaUrlFromDocumentsApi(normalizedDate);
   agendaLookupCache.set(cacheKey, resolvedUrl);
+  return resolvedUrl;
+}
+
+async function loadMinutesUrlForModal(eventItem) {
+  if (!eventItem) return null;
+
+  const normalizedDate = normalizeDateString(eventItem.date);
+  if (!normalizedDate) return null;
+
+  const cacheKey = `${eventItem.id || "unknown"}:${normalizedDate}`;
+  if (minutesLookupCache.has(cacheKey)) {
+    return minutesLookupCache.get(cacheKey);
+  }
+
+  const resolvedUrl = await fetchMinutesUrlFromDocumentsApi(normalizedDate);
+  minutesLookupCache.set(cacheKey, resolvedUrl);
   return resolvedUrl;
 }
 
@@ -725,6 +754,74 @@ async function fetchAgendaUrlFromDocumentsApi(normalizedDate, retryWithoutKey = 
     const response = await fetch(requestUrl);
     if ((response.status === 401 || response.status === 403) && apiKey && !retryWithoutKey) {
       return fetchAgendaUrlFromDocumentsApi(normalizedDate, true);
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+
+    // Prefer exact date stem matches and allow any extension/suffix.
+    const exactStemPattern = new RegExp(`(^|/)${baseFileName}(?:[._-]|\\.|$)`, "i");
+    const matched = items.find((item) => {
+      const name = String(item?.name || "");
+      if (!name || name.endsWith("/")) return false;
+      return exactStemPattern.test(name);
+    });
+
+    if (!matched) return null;
+
+    const matchedPath = String(matched.name || "").replace(/^\/+/, "");
+    const encodedPath = matchedPath.split("/").map(encodeURIComponent).join("/");
+    return `https://storage.googleapis.com/${encodeURIComponent(bucketName)}/${encodedPath}`;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchMinutesUrlFromDocumentsApi(normalizedDate, retryWithoutKey = false) {
+  const documentsApiEndpoint = String(window.siteConfig?.documentsApiEndpoint || "").trim();
+  if (documentsApiEndpoint) {
+    try {
+      const params = new URLSearchParams();
+      params.set("action", "minutes");
+      params.set("date", normalizedDate);
+      const connector = documentsApiEndpoint.includes("?") ? "&" : "?";
+      const response = await fetch(`${documentsApiEndpoint}${connector}${params.toString()}`);
+      if (response.ok) {
+        const payload = await response.json();
+        return payload?.url ? String(payload.url) : null;
+      }
+    } catch {
+      // Fall through to legacy direct GCS listing path.
+    }
+  }
+
+  const bucketName = window.siteConfig?.googleMinutesStorageBucket
+    || window.siteConfig?.googleStorageBucket
+    || "glasgow-va";
+  const minutesPrefix = normalizeStoragePrefix(
+    window.siteConfig?.googleMinutesStoragePrefix
+      || "council/minutes/"
+  );
+  const apiKey = window.siteConfig?.googleApiKey || "";
+
+  const baseFileName = `minutes_${normalizedDate}`;
+  const objectPrefix = `${minutesPrefix}${baseFileName}`;
+
+  const params = new URLSearchParams();
+  params.set("prefix", objectPrefix);
+  params.set("fields", "items(name)");
+  if (apiKey && !retryWithoutKey) params.set("key", apiKey);
+
+  const requestUrl = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucketName)}/o?${params}`;
+
+  try {
+    const response = await fetch(requestUrl);
+    if ((response.status === 401 || response.status === 403) && apiKey && !retryWithoutKey) {
+      return fetchMinutesUrlFromDocumentsApi(normalizedDate, true);
     }
 
     if (!response.ok) {
@@ -805,7 +902,8 @@ function fillList(elementId, items, emptyText) {
       const hasVideo = event.videoUrl && event.videoUrl.trim().length > 0;
       const title = hasVideo && isPast ? `<a href="${event.videoUrl}" target="_blank" rel="noreferrer">${escapeHtml(event.title)}</a>` : escapeHtml(event.title);
       const agendaLink = event.agendaUrl ? `<br /><a href="${event.agendaUrl}" target="_blank" rel="noreferrer noopener">View agenda document</a>` : "";
-      return `<li><strong>${title}</strong><br />${event.date} • ${event.time}<br />${escapeHtml(event.location)}${agendaLink}${isPast && hasVideo ? '<br /><small>Recording available</small>' : ""}</li>`;
+      const minutesLink = event.minutesUrl ? `<br /><a href="${event.minutesUrl}" target="_blank" rel="noreferrer noopener">View minutes document</a>` : "";
+      return `<li><strong>${title}</strong><br />${event.date} • ${event.time}<br />${escapeHtml(event.location)}${agendaLink}${minutesLink}${isPast && hasVideo ? '<br /><small>Recording available</small>' : ""}</li>`;
     })
     .join("");
 }
