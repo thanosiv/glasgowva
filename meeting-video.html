@@ -126,7 +126,31 @@
     <script>
       function normalizeDateLabel(value) {
         if (!value) return "";
-        const parsed = new Date(value);
+
+        const text = String(value).trim();
+        const yearFirst = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (yearFirst) {
+          const year = Number(yearFirst[1]);
+          const month = Number(yearFirst[2]);
+          const day = Number(yearFirst[3]);
+          const parsedLocal = new Date(year, month - 1, day);
+          if (!Number.isNaN(parsedLocal.getTime())) {
+            return parsedLocal.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+          }
+        }
+
+        const monthFirst = text.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+        if (monthFirst) {
+          const month = Number(monthFirst[1]);
+          const day = Number(monthFirst[2]);
+          const year = Number(monthFirst[3]);
+          const parsedLocal = new Date(year, month - 1, day);
+          if (!Number.isNaN(parsedLocal.getTime())) {
+            return parsedLocal.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+          }
+        }
+
+        const parsed = new Date(text);
         if (Number.isNaN(parsed.getTime())) return String(value);
         return parsed.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
       }
