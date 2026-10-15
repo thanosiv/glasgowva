@@ -6,10 +6,39 @@ const documentsState = {
 };
 
 function labelizeSegment(segment) {
-  return String(segment || "")
-    .trim()
+  const raw = String(segment || "").trim();
+  if (!raw) return "";
+
+  const lower = raw.toLowerCase();
+  if (lower === "meetingvideos") return "Meeting Videos";
+  if (lower === "meetingvideo") return "Meeting Video";
+
+  return raw
     .replace(/[-_]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\b([a-z])/g, (match) => match.toUpperCase());
+}
+
+function normalizeDocumentTypeLabel(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const lower = raw.toLowerCase();
+  if (lower === "meetingvideos") return "Meeting Videos";
+  if (lower === "meetingvideo") return "Meeting Video";
+
+  return raw
+    .replace(/[-_]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b([a-z])/g, (match) => match.toUpperCase());
+}
+
+function isExcludedDocumentPath(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized.includes("analytics/")
+    || normalized.startsWith("analytics/")
+    || normalized === "analytics"
+    || normalized.includes("/analytics");
 }
 
 function isJsonFile(name) {
@@ -48,7 +77,11 @@ async function fetchGcsDocumentList(bucketName, prefix = "", apiKey, retryWithou
   if (!Array.isArray(data.items)) return [];
 
   return data.items
-    .filter((item) => item.name && !item.name.endsWith("/") && !isJsonFile(item.name) && !isImageFile(item.name) && !isImagePath(item.name))
+    .filter((item) => {
+      if (!item.name || item.name.endsWith("/")) return false;
+      if (isJsonFile(item.name) || isImageFile(item.name) || isImagePath(item.name)) return false;
+      return !isExcludedDocumentPath(item.name) && !isExcludedDocumentPath(item.name.split("/").slice(0, -1).join("/"));
+    })
     .map((item) => {
       const pathParts = String(item.name).split("/").filter(Boolean);
       const rawName = pathParts[pathParts.length - 1] || item.name;
@@ -88,11 +121,14 @@ async function fetchDocumentsFromApi(apiEndpoint, prefix = "") {
     ? payload.documents.map((item) => {
         const parsedDate = parseDocumentDate(item.date) || parseDocumentDate(item.name) || null;
         const hasUsableDateLabel = String(item.dateLabel || "").trim() && String(item.dateLabel || "").trim().toLowerCase() !== "unknown";
+        const typePath = normalizeDocumentTypeLabel(item.typePath || item.typeLabel || "General");
+        const typeLabel = normalizeDocumentTypeLabel(item.typeLabel || item.typePath || "General");
+
         return {
           ...item,
           date: parsedDate,
-          typePath: item.typePath || item.typeLabel || "General",
-          typeLabel: item.typeLabel || item.typePath || "General",
+          typePath,
+          typeLabel,
           dateLabel: hasUsableDateLabel
             ? item.dateLabel
             : parsedDate?.toLocaleDateString(undefined, {
@@ -321,16 +357,25 @@ async function loadDocumentManifest() {
 }
 
 function normalizeDocumentItems(items) {
-  const labelize = (segment) =>
-    String(segment || "")
-      .trim()
+  const labelize = (segment) => {
+    const raw = String(segment || "").trim();
+    if (!raw) return "";
+
+    const lower = raw.toLowerCase();
+    if (lower === "meetingvideos") return "Meeting Videos";
+    if (lower === "meetingvideo") return "Meeting Video";
+
+    return raw
       .replace(/[-_]+/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
       .replace(/\b([a-z])/g, (match) => match.toUpperCase());
+  };
 
   return items
     .filter((item) => {
       const fileKey = item.path || item.name;
-      return !isJsonFile(fileKey) && !isImageFile(fileKey) && !isImagePath(fileKey);
+      if (isJsonFile(fileKey) || isImageFile(fileKey) || isImagePath(fileKey)) return false;
+      return !isExcludedDocumentPath(fileKey) && !isExcludedDocumentPath(item.type || "");
     })
     .map((item) => {
       let parsedDate = parseDocumentDate(item.date);
@@ -451,7 +496,9 @@ function populateTypeFilter() {
   const typeSelect = document.getElementById("document-type");
   if (!typeSelect) return;
   // Only include type paths that actually have files (i.e. exact typePath values)
-  const types = [...new Set(documentsState.items.map((item) => item.typePath))].sort();
+  const types = [...new Set(documentsState.items
+    .filter((item) => !isExcludedDocumentPath(item.typePath) && !isExcludedDocumentPath(item.typeLabel))
+    .map((item) => normalizeDocumentTypeLabel(item.typePath) || normalizeDocumentTypeLabel(item.typeLabel) || "General"))].sort();
 
   // Reset the select but keep the default "all" option if present in markup
   typeSelect.innerHTML = '<option value="all">All document types</option>';

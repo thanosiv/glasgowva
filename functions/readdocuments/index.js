@@ -35,10 +35,25 @@ function normalizePrefix(prefix) {
 }
 
 function labelizeSegment(segment) {
-  return String(segment || '')
-    .trim()
+  const raw = String(segment || '').trim();
+  if (!raw) return '';
+
+  const lower = raw.toLowerCase();
+  if (lower === 'meetingvideos') return 'Meeting Videos';
+  if (lower === 'meetingvideo') return 'Meeting Video';
+
+  return raw
     .replace(/[-_]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/\b([a-z])/g, (match) => match.toUpperCase());
+}
+
+function isExcludedDocumentPath(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized.includes('analytics/')
+    || normalized.startsWith('analytics/')
+    || normalized === 'analytics'
+    || normalized.includes('/analytics');
 }
 
 function isJsonFile(name) {
@@ -153,7 +168,11 @@ function extractNormalizedDatesFromText(value) {
 function mapStorageFilesToDocuments(bucketName, files) {
   return files
     .map((file) => String(file?.name || '').replace(/^\/+/, ''))
-    .filter((name) => name && !name.endsWith('/') && !isJsonFile(name) && !isImageFile(name) && !isImagePath(name))
+    .filter((name) => {
+      if (!name || name.endsWith('/')) return false;
+      if (isJsonFile(name) || isImageFile(name) || isImagePath(name)) return false;
+      return !isExcludedDocumentPath(name);
+    })
     .map((name) => {
       const pathParts = name.split('/').filter(Boolean);
       const rawName = pathParts[pathParts.length - 1] || name;
