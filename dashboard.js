@@ -16,6 +16,11 @@ const userManagementState = {
   showInactive: false,
 };
 
+const analyticsDashboardState = {
+  records: [],
+  selectedFilter: 'all',
+};
+
 const HEADER_INCLUDE_FALLBACK = `
 <section id="site-dev-notification" class="site-dev-notification hidden" aria-live="polite" role="status">
   <div class="container">
@@ -243,6 +248,284 @@ function ensureDashboardAuth() {
     return false;
   }
   return true;
+}
+
+function getAnalyticsBucketName() {
+  return String(window.siteConfig?.analyticsBucket || 'glasgow-va').trim() || 'glasgow-va';
+}
+
+function getAnalyticsPrefix() {
+  return String(window.siteConfig?.analyticsDataPrefix || 'analytics/').trim() || 'analytics/';
+}
+
+function getAnalyticsFilterSelect() {
+  return document.getElementById('analytics-filter-select');
+}
+
+function getLocalDateKey(dateValue) {
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatAnalyticsDate(dateString) {
+  if (!dateString) return '—';
+  const [year, month, day] = String(dateString).split('-').map((part) => Number(part));
+  if (!year || !month || !day) return dateString;
+
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) return dateString;
+  return parsed.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+async function loadAnalyticsRecords() {
+  const analyticsEndpoint = String(window.siteConfig?.analyticsEndpoint || '').trim();
+  if (analyticsEndpoint) {
+    const response = await fetch(analyticsEndpoint, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const payload = await response.json();
+      const events = Array.isArray(payload?.events) ? payload.events : [];
+      return events
+        .filter((event) => event && typeof event === 'object')
+        .map((event) => ({
+          kind: String(event.kind || '').trim().toLowerCase(),
+          href: String(event.href || '').trim(),
+          label: String(event.label || '').trim(),
+          timestamp: String(event.timestamp || '').trim(),
+        }))
+        .filter((event) => event.kind && event.timestamp)
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    }
+  }
+
+  const bucketName = getAnalyticsBucketName();
+  const prefix = getAnalyticsPrefix();
+  const listUrl = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucketName)}/o?prefix=${encodeURIComponent(prefix)}&fields=items(name)`;
+
+  const listResponse = await fetch(listUrl);
+  if (!listResponse.ok) {
+    throw new Error(`Unable to load analytics files (${listResponse.status}).`);
+  }
+
+  const listData = await listResponse.json();
+  const objectNames = Array.isArray(listData.items)
+    ? listData.items.map((item) => String(item.name || '').trim()).filter((name) => name && name.endsWith('.ndjson'))
+    : [];
+
+  const records = [];
+  for (const objectName of objectNames) {
+    const mediaUrl = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucketName)}/o/${encodeURIComponent(objectName)}?alt=media`;
+    const response = await fetch(mediaUrl);
+    if (!response.ok) {
+      continue;
+    }
+
+    const text = await response.text();
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line);
+        if (!parsed || typeof parsed !== 'object') continue;
+        const timestamp = String(parsed.timestamp || '').trim();
+        const kind = String(parsed.kind || '').trim().toLowerCase();
+        if (!timestamp || (kind !== 'document' && kind !== 'video')) continue;
+
+        records.push({
+          kind,
+          href: String(parsed.href || '').trim(),
+          label: String(parsed.label || '').trim(),
+          timestamp,
+        });
+      } catch (error) {
+        console.warn('Ignoring malformed analytics line.', error);
+      }
+    }
+  }
+
+  records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  return records;
+}
+
+function normalizeAnalyticsFilterValue(kind, href, label) {
+  const normalizedKind = String(kind || '').trim().toLowerCase();
+  const normalizedLabel = String(label || '').trim();
+  const decodedHref = String(href || '').trim();
+
+  if (!decodedHref) {
+    return normalizedLabel || 'Untitled item';
+  }
+
+  try {
+    const parsedUrl = new URL(decodedHref, window.location.href);
+    const sourceValue = parsedUrl.searchParams.get('src') || parsedUrl.pathname;
+    const rawName = String(sourceValue || '')
+      .split('?')[0]
+      .split('#')[0]
+      .replace(/^\/+/, '')
+      .split('/')
+      .pop() || '';
+
+    if (rawName) {
+      const normalizedFileName = decodeURIComponent(rawName)
+        .replace(/\.[^/.]+$/, '')
+        .replace(/\+/g, ' ')
+        .replace(/%20/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (normalizedFileName) {
+        return normalizedFileName;
+      }
+    }
+  } catch {
+    // Fall back to the label below if URL parsing fails.
+  }
+
+  if (normalizedKind === 'document') {
+    return normalizedLabel || 'Untitled document';
+  }
+
+  if (normalizedKind === 'video') {
+    return normalizedLabel || 'Untitled video';
+  }
+
+  return normalizedLabel || '';
+}
+
+function getAnalyticsFilterOptions(records) {
+  const seen = new Set();
+  const options = [];
+
+  for (const record of Array.isArray(records) ? records : []) {
+    const value = normalizeAnalyticsFilterValue(record?.kind, record?.href, record?.label);
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    options.push({ value, label: value });
+  }
+
+  return options.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function buildAnalyticsDailyCounts(records, selectedFilter = 'all') {
+  const countsByDate = new Map();
+
+  for (const record of Array.isArray(records) ? records : []) {
+    const value = normalizeAnalyticsFilterValue(record?.kind, record?.href, record?.label);
+    if (selectedFilter !== 'all' && value !== selectedFilter) continue;
+
+    const dateKey = getLocalDateKey(record?.timestamp || '');
+    if (!dateKey) continue;
+
+    countsByDate.set(dateKey, (countsByDate.get(dateKey) || 0) + 1);
+  }
+
+  return Array.from(countsByDate.entries())
+    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+    .map(([date, count]) => ({ date, count }));
+}
+
+function updateAnalyticsFilterOptions() {
+  const select = getAnalyticsFilterSelect();
+  if (!select) return;
+
+  const options = getAnalyticsFilterOptions(analyticsDashboardState.records);
+  const currentValue = options.some((option) => option.value === analyticsDashboardState.selectedFilter)
+    ? analyticsDashboardState.selectedFilter
+    : 'all';
+
+  analyticsDashboardState.selectedFilter = currentValue;
+  select.innerHTML = '<option value="all">All items</option>';
+
+  options.forEach((option) => {
+    const optionElement = document.createElement('option');
+    optionElement.value = option.value;
+    optionElement.textContent = option.label;
+    select.appendChild(optionElement);
+  });
+
+  select.value = currentValue;
+}
+
+function renderAnalyticsChart() {
+  const svg = document.getElementById('analytics-chart');
+  const emptyMessage = document.getElementById('analytics-chart-empty');
+  if (!svg) return;
+
+  const counts = buildAnalyticsDailyCounts(analyticsDashboardState.records, analyticsDashboardState.selectedFilter);
+
+  if (!counts.length) {
+    svg.innerHTML = '';
+    emptyMessage?.classList.remove('hidden');
+    return;
+  }
+
+  emptyMessage?.classList.add('hidden');
+
+  const width = 760;
+  const height = 260;
+  const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  const maxValue = Math.max(...counts.map((entry) => entry.count), 1);
+
+  const points = counts.map((entry, index) => {
+    const x = margin.left + (counts.length === 1 ? chartWidth / 2 : (index / (counts.length - 1)) * chartWidth);
+    const y = margin.top + chartHeight - ((entry.count / maxValue) * chartHeight);
+    return { ...entry, x, y };
+  });
+
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const fillPath = `${linePath} L ${points[points.length - 1].x} ${height - margin.bottom} L ${points[0].x} ${height - margin.bottom} Z`;
+  const gridLines = Array.from({ length: 4 }, (_, index) => {
+    const value = maxValue * (index / 3);
+    const y = margin.top + chartHeight - (value / maxValue) * chartHeight;
+    return `<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="rgba(15,65,92,0.15)" stroke-width="1" />`;
+  }).join('');
+
+  const dateLabels = points.map((point) => `<text x="${point.x}" y="${height - 14}" text-anchor="middle" font-size="10" fill="#5b6471">${formatAnalyticsDate(point.date)}</text>`).join('');
+  const valueLabels = points.map((point) => `<text x="${point.x}" y="${point.y - 12}" text-anchor="middle" font-size="10" fill="#0f415c" font-weight="700">${point.count}</text>`).join('');
+  const markers = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="4" fill="#0f415c" stroke="#ffffff" stroke-width="2" />`).join('');
+
+  svg.innerHTML = `
+    <g>
+      ${gridLines}
+      <path d="${fillPath}" fill="rgba(15, 65, 92, 0.08)"></path>
+      <path d="${linePath}" fill="none" stroke="#0f415c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+      ${markers}
+      ${valueLabels}
+      ${dateLabels}
+    </g>
+  `;
+}
+
+async function loadAnalyticsDashboard() {
+  const select = getAnalyticsFilterSelect();
+  if (!select) return;
+
+  try {
+    analyticsDashboardState.records = await loadAnalyticsRecords();
+    updateAnalyticsFilterOptions();
+    renderAnalyticsChart();
+  } catch (error) {
+    console.error(error);
+    const emptyMessage = document.getElementById('analytics-chart-empty');
+    if (emptyMessage) {
+      emptyMessage.textContent = 'Unable to load analytics data at this time.';
+      emptyMessage.classList.remove('hidden');
+    }
+    const svg = document.getElementById('analytics-chart');
+    if (svg) svg.innerHTML = '';
+  }
 }
 
 function getServiceRequestsEndpoint() {
@@ -1029,6 +1312,12 @@ function attachDashboardEvents() {
 
   document.querySelectorAll('.tab-button').forEach((button) => {
     button.addEventListener('click', () => selectTab(button.id));
+  });
+
+  const analyticsFilterSelect = getAnalyticsFilterSelect();
+  analyticsFilterSelect?.addEventListener('change', (event) => {
+    analyticsDashboardState.selectedFilter = event.target.value || 'all';
+    renderAnalyticsChart();
   });
 
   if (uploadForm) {
@@ -2364,6 +2653,7 @@ function showDashboard(token) {
   refreshServiceRequestsLog();
   loadUsers();
   loadPublicNotices();
+  loadAnalyticsDashboard();
   updatePublicNoticeScheduleRequirement();
   loadGovernmentData().catch((error) => {
     updateGovernmentStatus(error.message, 'error');

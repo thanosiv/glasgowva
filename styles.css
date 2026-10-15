@@ -1578,6 +1578,27 @@ iframe {
   display: none;
 }
 
+.analytics-filter-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 24rem;
+  margin-bottom: 1rem;
+}
+
+.analytics-chart-shell {
+  background: #f8fafc;
+  border: 1px solid rgba(15, 65, 92, 0.12);
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+#analytics-chart {
+  display: block;
+  width: 100%;
+  height: 260px;
+}
+
 .dashboard-form {
   display: grid;
   gap: 1.25rem;

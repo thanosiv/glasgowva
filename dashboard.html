@@ -61,6 +61,7 @@
               <button type="button" role="tab" aria-selected="false" aria-controls="government-panel" id="government-tab" class="tab-button">Manage Government</button>
               <!--button type="button" role="tab" aria-selected="false" aria-controls="sms-panel" id="sms-tab" class="tab-button">Messaging</button-->
               <button type="button" role="tab" aria-selected="false" aria-controls="service-requests-panel" id="service-requests-tab" class="tab-button">Service requests</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="analytics-panel" id="analytics-tab" class="tab-button">Analytics</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="users-panel" id="users-tab" class="tab-button">Users</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="future-panel" id="future-tab" class="tab-button">Future modules</button>
             </div>
@@ -201,6 +202,24 @@
               </div>
 
               <div class="ticket-log-list" id="service-requests-log"></div>
+            </div>
+
+            <div id="analytics-panel" role="tabpanel" aria-labelledby="analytics-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Track document and video engagement by date and filter down to a single item.</p>
+              </div>
+
+              <div class="analytics-filter-wrap">
+                <label for="analytics-filter-select">Filter by item</label>
+                <select id="analytics-filter-select">
+                  <option value="all">All items</option>
+                </select>
+              </div>
+
+              <div class="analytics-chart-shell">
+                <svg id="analytics-chart" viewBox="0 0 760 260" role="img" aria-label="Analytics by date"></svg>
+                <p id="analytics-chart-empty" class="status-text hidden">No analytics data is available for the selected filter.</p>
+              </div>
             </div>
 
             <div id="users-panel" role="tabpanel" aria-labelledby="users-tab" class="tab-panel hidden">
@@ -551,6 +570,9 @@
         councilApiEndpoint: "https://councilimages-821248093008.us-east4.run.app",
         smsEndpoint: "https://twiliosms-821248093008.us-east4.run.app",
         eventsEndpoint: "https://readevents-821248093008.us-east4.run.app",
+        analyticsEndpoint: "https://analytics-821248093008.us-east4.run.app",
+        analyticsBucket: "glasgow-va",
+        analyticsDataPrefix: "analytics/",
         devNotificationEndpoint: "https://devnotification-821248093008.us-east4.run.app",
         devNotificationDataUrl: "./assets/notifications/dev-message.json"
       };

@@ -1,0 +1,31 @@
+const assert = require('node:assert/strict');
+const { normalizeAnalyticsFilterValue, buildAnalyticsDailyCounts, getAnalyticsFilterOptions } = require('../analytics-data-utils.js');
+
+const records = [
+  { kind: 'document', label: 'Town Charter', timestamp: '2026-10-01T12:00:00Z' },
+  { kind: 'video', href: 'https://example.com/meeting-video.html?src=https%3A%2F%2Fstorage.googleapis.com%2Fglasgow-va%2Fmeetingvideos%2FTown%2520Hall%2520Meeting%25202026-10-13.mp4', timestamp: '2026-10-02T10:00:00Z' },
+  { kind: 'document', label: 'Town Charter', timestamp: '2026-10-02T08:00:00Z' },
+  { kind: 'video', href: 'https://example.com/meeting-video.html?src=https%3A%2F%2Fstorage.googleapis.com%2Fglasgow-va%2Fmeetingvideos%2FTown%2520Hall%2520Meeting%25202026-10-13.mp4', timestamp: '2026-10-02T14:00:00Z' },
+  { kind: 'video', href: 'https://example.com/meeting-video.html?src=https%3A%2F%2Fstorage.googleapis.com%2Fglasgow-va%2Fmeetingvideos%2FOther%2520Meeting%25202026-10-14.mp4', timestamp: '2026-10-03T09:00:00Z' },
+];
+
+assert.equal(normalizeAnalyticsFilterValue('document', 'https://example.com/doc.pdf', 'Town Charter'), 'Town Charter');
+assert.equal(normalizeAnalyticsFilterValue('video', 'https://example.com/meeting-video.html?src=https%3A%2F%2Fstorage.googleapis.com%2Fglasgow-va%2Fmeetingvideos%2FTown%2520Hall%2520Meeting%25202026-10-13.mp4', ''), 'Town Hall Meeting 2026-10-13');
+
+const dailyCounts = buildAnalyticsDailyCounts(records, 'all');
+assert.deepEqual(dailyCounts, [
+  { date: '2026-10-01', count: 1 },
+  { date: '2026-10-02', count: 3 },
+  { date: '2026-10-03', count: 1 }
+]);
+
+const filteredCounts = buildAnalyticsDailyCounts(records, 'Town Hall Meeting 2026-10-13');
+assert.deepEqual(filteredCounts, [
+  { date: '2026-10-02', count: 2 }
+]);
+
+const filterOptions = getAnalyticsFilterOptions(records);
+assert.equal(filterOptions.length, 3);
+assert.deepEqual(filterOptions.map((option) => option.label), ['Other Meeting 2026-10-14', 'Town Charter', 'Town Hall Meeting 2026-10-13']);
+
+console.log('analytics utils tests passed');

@@ -21,7 +21,7 @@ function createStorageFromEnv() {
 
 function setCorsHeaders(res) {
   res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
@@ -95,6 +95,45 @@ function normalizeEvent(body) {
   };
 }
 
+async function readMonthlyAnalyticsFile(storage, bucketName, objectName) {
+  const bucket = storage.bucket(bucketName);
+  const file = bucket.file(objectName);
+  const [buffer] = await file.download();
+  const text = buffer.toString('utf8');
+  const events = [];
+
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      const kind = String(parsed?.kind || '').trim().toLowerCase();
+      if (kind !== 'document' && kind !== 'video') continue;
+      if (!parsed?.timestamp) continue;
+      events.push(parsed);
+    } catch {
+      // Ignore malformed analytics lines.
+    }
+  }
+
+  return events;
+}
+
+async function readAnalyticsEvents(storage, bucketName, prefix) {
+  const bucket = storage.bucket(bucketName);
+  const [files] = await bucket.getFiles({ prefix: normalizePrefix(prefix), autoPaginate: true });
+  const events = [];
+
+  for (const file of files) {
+    if (!file.name.endsWith('.ndjson')) continue;
+    const fileEvents = await readMonthlyAnalyticsFile(storage, bucketName, file.name);
+    events.push(...fileEvents);
+  }
+
+  return events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+}
+
 async function appendMonthlyEvent(storage, bucketName, objectName, eventRecord) {
   const bucket = storage.bucket(bucketName);
   const file = bucket.file(objectName);
@@ -133,6 +172,33 @@ async function appendMonthlyEvent(storage, bucketName, objectName, eventRecord) 
     }
   }
 }
+
+exports.readAnalytics = async (req, res) => {
+  setCorsHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).send('');
+  }
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!BUCKET_NAME) {
+    return res.status(500).json({ error: 'Storage is not configured' });
+  }
+
+  try {
+    const storage = createStorageFromEnv();
+    const events = await readAnalyticsEvents(storage, BUCKET_NAME, ANALYTICS_PREFIX);
+    return res.status(200).json({ events });
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Failed to read analytics events',
+      details: error.message
+    });
+  }
+};
 
 exports.trackAnalytics = async (req, res) => {
   setCorsHeaders(res);
