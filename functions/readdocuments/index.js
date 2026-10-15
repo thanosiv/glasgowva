@@ -56,6 +56,13 @@ function isExcludedDocumentPath(value) {
     || normalized.includes('/analytics');
 }
 
+function isAnalyticsDocumentPath(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return false;
+  const segments = normalized.split(/[\\/]+/).filter(Boolean);
+  return segments.includes('analytics');
+}
+
 function isJsonFile(name) {
   return String(name || '').toLowerCase().trim().endsWith('.json');
 }
@@ -171,6 +178,7 @@ function mapStorageFilesToDocuments(bucketName, files) {
     .filter((name) => {
       if (!name || name.endsWith('/')) return false;
       if (isJsonFile(name) || isImageFile(name) || isImagePath(name)) return false;
+      if (isAnalyticsDocumentPath(name)) return false;
       return !isExcludedDocumentPath(name);
     })
     .map((name) => {

@@ -41,6 +41,24 @@ function isExcludedDocumentPath(value) {
     || normalized.includes("/analytics");
 }
 
+function isAnalyticsDocumentItem(item) {
+  const candidates = [
+    item?.name,
+    item?.path,
+    item?.type,
+    item?.typePath,
+    item?.typeLabel,
+    item?.url
+  ];
+
+  return candidates.some((candidate) => {
+    const normalized = String(candidate || "").trim().toLowerCase();
+    if (!normalized) return false;
+    const segments = normalized.split(/[\\/]+/).filter(Boolean);
+    return segments.includes("analytics");
+  });
+}
+
 function isJsonFile(name) {
   return String(name || "").toLowerCase().trim().endsWith('.json');
 }
@@ -375,6 +393,7 @@ function normalizeDocumentItems(items) {
     .filter((item) => {
       const fileKey = item.path || item.name;
       if (isJsonFile(fileKey) || isImageFile(fileKey) || isImagePath(fileKey)) return false;
+      if (isAnalyticsDocumentItem(item)) return false;
       return !isExcludedDocumentPath(fileKey) && !isExcludedDocumentPath(item.type || "");
     })
     .map((item) => {
@@ -558,6 +577,7 @@ function renderDocumentList() {
   if (!list || !summary) return;
 
   const filtered = documentsState.items.filter((item) => {
+    if (isAnalyticsDocumentItem(item)) return false;
     if (documentsState.type !== "all" && item.typePath !== documentsState.type) return false;
     if (documentsState.from) {
       const fromDate = parseLocalDate(documentsState.from);
