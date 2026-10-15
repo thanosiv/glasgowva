@@ -638,6 +638,12 @@ iframe {
   background: rgba(209, 125, 45, 0.2);
 }
 
+.calendar-item--cancelled {
+  background: rgba(154, 47, 47, 0.18);
+  color: #6f1f1f;
+  text-decoration: line-through;
+}
+
 .calendar-item:hover,
 .calendar-item:focus-visible {
   outline: none;
@@ -853,6 +859,11 @@ iframe {
   outline: none;
 }
 
+.event-list-row--cancelled {
+  border-color: rgba(154, 47, 47, 0.32);
+  background: rgba(154, 47, 47, 0.08);
+}
+
 .event-list-date,
 .event-list-time,
 .event-list-type {
@@ -861,6 +872,11 @@ iframe {
 
 .event-list-name {
   font-weight: 600;
+}
+
+.event-list-type--cancelled {
+  color: #8c2929;
+  font-weight: 700;
 }
 
 .ticket-log-list {

@@ -365,6 +365,33 @@ function getActiveMonthRange() {
   };
 }
 
+function stripCancelledEventTitle(value) {
+  return String(value || "").replace(/^\s*\[(?:cancelled|canceled)\]\s*/i, "").trim();
+}
+
+function stripCancelledStatusLineFromDescription(value) {
+  const lines = String(value || "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => !/^\s*status\s*:\s*cancelled\s*$/i.test(line));
+  return lines.join("\n").trim();
+}
+
+function resolveCalendarEventStatus(title, description) {
+  const titleText = String(title || "").trim();
+  const descriptionText = String(description || "").trim();
+
+  if (/^\s*\[(?:cancelled|canceled)\]/i.test(titleText)) {
+    return "cancelled";
+  }
+
+  if (/\bstatus\s*:\s*cancelled\b/i.test(descriptionText)) {
+    return "cancelled";
+  }
+
+  return "active";
+}
+
 function normalizeCalendarItem(item, index) {
   const MEETING_LABEL_ID = 'f1aaf7fe-fcf4-498d-b190-0546d65dbf5a';
   const EVENT_LABEL_ID = '2957bade-5f88-438b-905f-f11a0d9e60c8';
@@ -385,9 +412,11 @@ function normalizeCalendarItem(item, index) {
     }
   }
 
-  const title = item.title || "Event";
+  const rawTitle = item.title || "Event";
+  const title = stripCancelledEventTitle(rawTitle) || "Event";
   const location = item.location || "";
   const rawDescription = item.description || "";
+  const status = resolveCalendarEventStatus(rawTitle, rawDescription);
   const videoUrl = item.videoUrl || extractVideoUrl(rawDescription) || null;
   const description = cleanEventDescription(rawDescription, videoUrl);
   const agendaUrl = item.agendaUrl || null;
@@ -415,6 +444,7 @@ function normalizeCalendarItem(item, index) {
     location,
     description,
     type,
+    status,
     videoUrl,
     agendaUrl,
     minutesUrl
@@ -456,7 +486,8 @@ function extractVideoUrl(text) {
 function cleanEventDescription(text, videoUrl) {
   if (!text) return "";
 
-  const cleanedText = String(text)
+  const textWithoutStatusLine = stripCancelledStatusLineFromDescription(text);
+  const cleanedText = String(textWithoutStatusLine)
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]*>/g, " ")
@@ -548,8 +579,11 @@ function renderMonthCalendar() {
     const itemsHtml = dayEvents.length
       ? dayEvents
         .map((item) => {
+          const isCancelled = item.status === "cancelled";
           const itemType = item.type === "meeting" ? "meeting" : "event";
-          return `<button type="button" class="calendar-item calendar-item--${itemType}" data-event-id="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button>`;
+          const itemText = isCancelled ? `${item.title} (Cancelled)` : item.title;
+          const cancelledClass = isCancelled ? " calendar-item--cancelled" : "";
+          return `<button type="button" class="calendar-item calendar-item--${itemType}${cancelledClass}" data-event-id="${escapeHtml(item.id)}">${escapeHtml(itemText)}</button>`;
         })
         .join("")
       : "";
@@ -603,10 +637,12 @@ async function openEventModal(eventItem) {
 
   if (!modal || !title || !date || !time || !type || !location || !description || !agendaWrap || !agenda || !minutesWrap || !minutes || !videoWrap || !video) return;
 
-  title.textContent = eventItem.title || "Untitled event";
+  const isCancelled = eventItem.status === "cancelled";
+  title.textContent = isCancelled ? `${eventItem.title || "Untitled event"} (Cancelled)` : (eventItem.title || "Untitled event");
   date.textContent = formatDisplayDate(eventItem.date);
   time.textContent = eventItem.time || "Not provided";
-  type.textContent = eventItem.type === "meeting" ? "Meeting" : "Event";
+  const typeLabel = eventItem.type === "meeting" ? "Meeting" : "Event";
+  type.textContent = isCancelled ? `${typeLabel} - Cancelled` : typeLabel;
   location.textContent = eventItem.location || "Not provided";
   const descriptionText = String(eventItem.description || "").trim();
   const descriptionRow = description.parentElement;
@@ -1101,7 +1137,9 @@ function fillList(elementId, items, emptyText) {
       const itemDate = new Date(event.date);
       const isPast = itemDate < today;
       const hasVideo = event.videoUrl && event.videoUrl.trim().length > 0;
-      const title = hasVideo && isPast ? `<a href="${event.videoUrl}" target="_blank" rel="noreferrer">${escapeHtml(event.title)}</a>` : escapeHtml(event.title);
+      const isCancelled = event.status === "cancelled";
+      const eventTitle = isCancelled ? `${event.title} (Cancelled)` : event.title;
+      const title = hasVideo && isPast ? `<a href="${event.videoUrl}" target="_blank" rel="noreferrer">${escapeHtml(eventTitle)}</a>` : escapeHtml(eventTitle);
       const agendaLink = event.agendaUrl ? `<br /><a href="${event.agendaUrl}" target="_blank" rel="noreferrer noopener">View agenda document</a>` : "";
       const minutesLink = event.minutesUrl ? `<br /><a href="${event.minutesUrl}" target="_blank" rel="noreferrer noopener">View minutes document</a>` : "";
       return `<li><strong>${title}</strong><br />${event.date} • ${event.time}<br />${escapeHtml(event.location)}${agendaLink}${minutesLink}${isPast && hasVideo ? '<br /><small>Recording available</small>' : ""}</li>`;

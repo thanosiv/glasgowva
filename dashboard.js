@@ -1193,12 +1193,14 @@ function attachDashboardEvents() {
       const title = document.getElementById('event-title')?.value.trim();
       const date = document.getElementById('event-date')?.value;
       const type = document.getElementById('event-type')?.value;
+      const cancelStatus = document.getElementById('event-cancel-status')?.value || 'active';
       const start = document.getElementById('event-start')?.value;
       const end = document.getElementById('event-end')?.value;
       const location = document.getElementById('event-location')?.value.trim();
       const description = document.getElementById('event-description')?.value.trim();
+      const normalizedEventPayload = applyEventCancelStatus(title, description, cancelStatus);
 
-      if (!title || !date || !start) {
+      if (!normalizedEventPayload.title || !date || !start) {
         updateEventStatus('Title, date, and start time are required.', 'error');
         return;
       }
@@ -1214,7 +1216,7 @@ function attachDashboardEvents() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${getDashboardToken()}`,
           },
-          body: JSON.stringify({ action, eventId, title, date, type, start, end, location, description }),
+          body: JSON.stringify({ action, eventId, title: normalizedEventPayload.title, date, type, start, end, location, description: normalizedEventPayload.description }),
         });
 
         const result = await response.json();
@@ -1319,6 +1321,59 @@ function normalizeEventType(rawValue, fallbackEvent = null) {
   return 'event';
 }
 
+const CANCELLED_TITLE_PREFIX = '[Cancelled] ';
+const CANCELLED_STATUS_LINE = 'Status: Cancelled';
+
+function stripCancelledTitlePrefix(value) {
+  return String(value || '').replace(/^\s*\[(?:cancelled|canceled)\]\s*/i, '').trim();
+}
+
+function stripCancelledStatusLine(value) {
+  const lines = String(value || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => !/^\s*status\s*:\s*cancelled\s*$/i.test(line));
+
+  return lines.join('\n').trim();
+}
+
+function resolveEventCancelStatus(eventRecord) {
+  const title = String(eventRecord?.summary || eventRecord?.title || '').trim();
+  const description = String(eventRecord?.description || '').trim();
+  if (/^\s*\[(?:cancelled|canceled)\]/i.test(title)) {
+    return 'cancelled';
+  }
+  if (/\bstatus\s*:\s*cancelled\b/i.test(description)) {
+    return 'cancelled';
+  }
+  return 'active';
+}
+
+function applyEventCancelStatus(title, description, cancelStatus) {
+  const cleanedTitle = stripCancelledTitlePrefix(title);
+  const cleanedDescription = stripCancelledStatusLine(description);
+  const normalizedStatus = cancelStatus === 'cancelled' ? 'cancelled' : 'active';
+
+  if (!cleanedTitle) {
+    return {
+      title: '',
+      description: cleanedDescription,
+    };
+  }
+
+  if (normalizedStatus !== 'cancelled') {
+    return {
+      title: cleanedTitle,
+      description: cleanedDescription,
+    };
+  }
+
+  return {
+    title: `${CANCELLED_TITLE_PREFIX}${cleanedTitle}`,
+    description: cleanedDescription ? `${CANCELLED_STATUS_LINE}\n${cleanedDescription}` : CANCELLED_STATUS_LINE,
+  };
+}
+
 function getCurrentMonthRange() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1351,13 +1406,14 @@ function openEventModal(mode, eventRecord = null) {
   const eventTitle = document.getElementById('event-title');
   const eventDate = document.getElementById('event-date');
   const eventType = document.getElementById('event-type');
+  const eventCancelStatus = document.getElementById('event-cancel-status');
   const eventStart = document.getElementById('event-start');
   const eventEnd = document.getElementById('event-end');
   const eventLocation = document.getElementById('event-location');
   const eventDescription = document.getElementById('event-description');
   const eventDateFrom = document.getElementById('event-date-from');
 
-  if (!modal || !title || !eventForm || !eventId || !eventTitle || !eventDate || !eventType || !eventStart || !eventEnd || !eventLocation || !eventDescription) {
+  if (!modal || !title || !eventForm || !eventId || !eventTitle || !eventDate || !eventType || !eventCancelStatus || !eventStart || !eventEnd || !eventLocation || !eventDescription) {
     return;
   }
 
@@ -1365,20 +1421,25 @@ function openEventModal(mode, eventRecord = null) {
     const dateParts = getEventDateParts(eventRecord.start?.dateTime || eventRecord.start?.date || '');
     const endParts = getEventDateParts(eventRecord.end?.dateTime || eventRecord.end?.date || '');
     const resolvedType = normalizeEventType(eventRecord.eventType || eventRecord.type, eventRecord);
+    const resolvedStatus = resolveEventCancelStatus(eventRecord);
+    const cleanedTitle = stripCancelledTitlePrefix(eventRecord.summary || '');
+    const cleanedDescription = stripCancelledStatusLine(eventRecord.description || '');
     title.textContent = 'Edit event';
     eventId.value = String(eventRecord.id || '');
-    eventTitle.value = String(eventRecord.summary || '');
+    eventTitle.value = String(cleanedTitle || '');
     eventDate.value = dateParts.date;
     eventType.value = resolvedType;
+    eventCancelStatus.value = resolvedStatus;
     eventStart.value = dateParts.start;
     eventEnd.value = endParts.start;
     eventLocation.value = String(eventRecord.location || '');
-    eventDescription.value = String(eventRecord.description || '');
+    eventDescription.value = String(cleanedDescription || '');
   } else {
     title.textContent = 'Create event';
     eventForm.reset();
     eventId.value = '';
     eventType.value = 'event';
+    eventCancelStatus.value = 'active';
     eventDate.value = eventDateFrom?.value || '';
     eventStart.value = '';
     eventEnd.value = '';
@@ -1434,12 +1495,15 @@ async function loadEventRange() {
       const startTime = eventItem.start?.dateTime ? new Date(eventItem.start.dateTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'All day';
       const endTime = eventItem.end?.dateTime ? new Date(eventItem.end.dateTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
       const eventTypeText = normalizeEventType(eventItem.eventType || eventItem.type, eventItem) === 'meeting' ? 'Meeting' : 'Event';
+      const eventStatus = resolveEventCancelStatus(eventItem);
+      const eventDisplayTitle = stripCancelledTitlePrefix(eventItem.summary || 'Untitled event') || 'Untitled event';
+      const displayType = eventStatus === 'cancelled' ? 'Cancelled' : eventTypeText;
       return `
-        <button type="button" class="event-list-row" data-event-id="${escapeHtml(eventItem.id || '')}">
+        <button type="button" class="event-list-row ${eventStatus === 'cancelled' ? 'event-list-row--cancelled' : ''}" data-event-id="${escapeHtml(eventItem.id || '')}">
           <span class="event-list-date">${escapeHtml(formatDateValue(eventDate))}</span>
           <span class="event-list-time">${escapeHtml(startTime)}${endTime ? ` – ${escapeHtml(endTime)}` : ''}</span>
-          <span class="event-list-name">${escapeHtml(eventItem.summary || 'Untitled event')}</span>
-          <span class="event-list-type">${escapeHtml(eventTypeText)}</span>
+          <span class="event-list-name">${escapeHtml(eventDisplayTitle)}</span>
+          <span class="event-list-type ${eventStatus === 'cancelled' ? 'event-list-type--cancelled' : ''}">${escapeHtml(displayType)}</span>
         </button>
       `;
     }).join('');
