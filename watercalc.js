@@ -84,7 +84,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (valueEntered >= 100) {
-      status.textContent = "Please enter usage in thousand gallons. Example: 5.9 for 5,900 gallons.";
+      const thousandGallonsExample = (valueEntered / 1000).toFixed(1);
+      const gallonsText = new Intl.NumberFormat("en-US").format(valueEntered);
+      status.textContent = `Please enter usage in thousand gallons. Example: ${thousandGallonsExample} for ${gallonsText} gallons.`;
       status.className = "status-text status-error";
       valueInput.setAttribute("aria-invalid", "true");
       output.classList.add("hidden");
