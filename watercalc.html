@@ -20,8 +20,8 @@
         <div class="container">
           <div class="section-header">
             <p class="eyebrow">Utilities</p>
-            <h1>Rockbridge County PSA Water and sewer calculator</h1>
-            <p>Enter your current usage value to estimate the total monthly charges for PSA.</p>
+            <h1>Water and Sewer Calculator</h1>
+            <p>Enter your current usage value to estimate monthly charges for Town of Glasgow and Rockbridge County PSA.</p>
           </div>
 
           <article class="card">
@@ -47,11 +47,22 @@
 
             <div id="water-calc-output" class="service-request-status-card hidden" aria-live="polite">
               <h2>Output</h2>
-              <p id="water-account-charge"></p>
-              <p id="sewer-account-charge"></p>
-              <p id="water-total"></p>
-              <p id="sewer-total"></p>
-              <p id="grand-total"></p>
+              <div class="calc-comparison-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+                <div class="calc-column">
+                  <h3>Town of Glasgow</h3>
+                  <p id="glasgow-water-charge"></p>
+                  <p id="glasgow-sewer-charge"></p>
+                  <p id="glasgow-grand-total"></p>
+                </div>
+                <div class="calc-column">
+                  <h3>Rockbridge County PSA</h3>
+                  <p id="water-account-charge"></p>
+                  <p id="sewer-account-charge"></p>
+                  <p id="water-total"></p>
+                  <p id="sewer-total"></p>
+                  <p id="grand-total"></p>
+                </div>
+              </div>
             </div>
           </article>
         </div>
@@ -68,4 +79,3 @@
     <script src="watercalc.js"></script>
   </body>
 </html>
-
