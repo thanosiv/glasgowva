@@ -7,12 +7,14 @@ const GLASGOW_RATES = {
   BASE_ALLOWANCE_K_GAL: 3.0,
 
   // Water Rates (In-Town Residential)
+  // Source: News-Gazette, May 20, 2026 edition
   WATER_BASE_FEE: 38.00,       // $38.00 flat rate for first 3,000 gal
   WATER_OVERAGE_PER_K: 5.40,   // $0.54 per 100 gal ($5.40 per 1,000 gal)
 
   // Sewer Rates (In-Town Residential)
+  // Source: News-Gazette, May 20, 2026 edition
   SEWER_BASE_FEE: 42.00,       // $42.00 flat rate for first 3,000 gal
-  SEWER_OVERAGE_PER_K: 2.60    // $0.26 per 100 gal ($2.60 per 1,000 gal)
+  SEWER_OVERAGE_PER_K: 2.80    // $0.28 per 100 gal ($2.80 per 1,000 gal)
 };
 
 const PSA_RATES = {
