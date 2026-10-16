@@ -135,13 +135,26 @@
           </div>
           <article class="card events-calendar-shell" aria-labelledby="events-calendar-heading">
             <div class="events-calendar-toolbar">
+              <div class="events-calendar-heading">
+                <h3 id="events-calendar-title" class="events-calendar-title">Events calendar</h3>
+                <p id="events-calendar-status" class="events-calendar-status">Loading events...</p>
+              </div>
+              <div class="events-calendar-view-toggle" role="group" aria-label="Calendar view selector">
+                <button type="button" class="calendar-view-button active" data-calendar-view="month" aria-pressed="true">Month</button>
+                <button type="button" class="calendar-view-button" data-calendar-view="week" aria-pressed="false">Week</button>
+                <button type="button" class="calendar-view-button" data-calendar-view="day" aria-pressed="false">Day</button>
+              </div>
               <div class="events-calendar-picker">
                 <label for="events-month-picker">Select month</label>
                 <input type="month" id="events-month-picker" name="events-month-picker" />
               </div>
+              <div class="events-calendar-picker">
+                <label for="events-date-picker">Focus date</label>
+                <input type="date" id="events-date-picker" name="events-date-picker" />
+              </div>
             </div>
             <div class="events-calendar-grid" aria-label="Monthly events calendar">
-              <div class="events-calendar-weekdays" aria-hidden="true">
+              <div id="events-calendar-weekdays" class="events-calendar-weekdays" aria-hidden="true">
                 <div class="calendar-weekday">Sun</div>
                 <div class="calendar-weekday">Mon</div>
                 <div class="calendar-weekday">Tue</div>

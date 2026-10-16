@@ -173,15 +173,11 @@ async function appendMonthlyEvent(storage, bucketName, objectName, eventRecord) 
   }
 }
 
-exports.readAnalytics = async (req, res) => {
+exports.analytics = async function analytics(req, res) {
   setCorsHeaders(res);
 
   if (req.method === 'OPTIONS') {
     return res.status(204).send('');
-  }
-
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   if (!BUCKET_NAME) {
@@ -189,43 +185,25 @@ exports.readAnalytics = async (req, res) => {
   }
 
   try {
-    const storage = createStorageFromEnv();
-    const events = await readAnalyticsEvents(storage, BUCKET_NAME, ANALYTICS_PREFIX);
-    return res.status(200).json({ events });
-  } catch (error) {
-    return res.status(500).json({
-      error: 'Failed to read analytics events',
-      details: error.message
-    });
-  }
-};
+    if (req.method === 'GET') {
+      const storage = createStorageFromEnv();
+      const events = await readAnalyticsEvents(storage, BUCKET_NAME, ANALYTICS_PREFIX);
+      return res.status(200).json({ events });
+    }
 
-exports.trackAnalytics = async (req, res) => {
-  setCorsHeaders(res);
+    if (req.method === 'POST') {
+      const storage = createStorageFromEnv();
+      const eventRecord = normalizeEvent(parseRequestBody(req));
+      const objectName = toAnalyticsMonthPath(eventRecord.timestamp);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(204).send('');
-  }
+      await appendMonthlyEvent(storage, BUCKET_NAME, objectName, eventRecord);
+      return res.status(202).json({ ok: true });
+    }
 
-  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!BUCKET_NAME) {
-    return res.status(500).json({ error: 'Storage is not configured' });
-  }
-
-  try {
-    const storage = createStorageFromEnv();
-    const eventRecord = normalizeEvent(parseRequestBody(req));
-    const objectName = toAnalyticsMonthPath(eventRecord.timestamp);
-
-    await appendMonthlyEvent(storage, BUCKET_NAME, objectName, eventRecord);
-
-    return res.status(202).json({ ok: true });
   } catch (error) {
     return res.status(500).json({
-      error: 'Failed to record analytics event',
+      error: req.method === 'GET' ? 'Failed to read analytics events' : 'Failed to record analytics event',
       details: error.message
     });
   }
