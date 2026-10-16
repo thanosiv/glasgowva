@@ -6,13 +6,13 @@
 const GLASGOW_RATES = {
   BASE_ALLOWANCE_K_GAL: 3.0,
 
-  // Water & Sewer Base Rates (Including $3.00 base rate addition for In-Town)
-  WATER_BASE_FEE: 38.00,       // $35.00 + $3.00 base rate addition
-  SEWER_BASE_FEE: 39.50,       // $36.50 + $3.00 base rate addition
-  
-  // Overage rates per 1,000 gallons ($0.54/100 gal & $0.26/100 gal)
-  WATER_OVERAGE_PER_K: 5.40,
-  SEWER_OVERAGE_PER_K: 2.60
+  // Water Rates (In-Town)
+  WATER_BASE_FEE: 38.00,       // $38.00 flat rate for first 3,000 gallons
+  WATER_OVERAGE_PER_K: 5.40,   // $0.54 per 100 gal ($5.40 per 1,000 gal) over 3,000 gal
+
+  // Sewer Rates (In-Town)
+  SEWER_BASE_FEE: 42.00,       // $42.00 flat rate for first 3,000 gallons (includes $4.00 base increase)
+  SEWER_OVERAGE_PER_K: 5.40    // $0.54 per 100 gal ($5.40 per 1,000 gal; includes +$0.28/100gal increase)
 };
 
 const PSA_RATES = {
