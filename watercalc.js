@@ -1,3 +1,28 @@
+/**
+ * GLASGOW & ROCKBRIDGE PSA WATER CALCULATOR
+ */
+
+// --- CONFIGURABLE RATES ---
+const GLASGOW_RATES = {
+  BASE_ALLOWANCE_K_GAL: 3.0,
+
+  // Water & Sewer Base Rates (Including $3.00 base rate addition for In-Town)
+  WATER_BASE_FEE: 38.00,       // $35.00 + $3.00 base rate addition
+  SEWER_BASE_FEE: 39.50,       // $36.50 + $3.00 base rate addition
+  
+  // Overage rates per 1,000 gallons ($0.54/100 gal & $0.26/100 gal)
+  WATER_OVERAGE_PER_K: 5.40,
+  SEWER_OVERAGE_PER_K: 2.60
+};
+
+const PSA_RATES = {
+  WATER_ACCOUNT_CHARGE: 27.12 / 2,
+  SEWER_ACCOUNT_CHARGE: 41.67 / 2,
+  WATER_PER_K: 8.60,
+  SEWER_PER_K: 13.85
+};
+
+// --- HELPER FUNCTIONS ---
 function formatCurrency(value) {
   return Number(value).toFixed(2);
 }
@@ -14,18 +39,19 @@ function sanitizeDecimalInput(rawValue) {
   return `${parts[0]}.${parts.slice(1).join("")}`;
 }
 
+// --- MAIN EVENT LISTENER ---
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("water-calc-form");
   const valueInput = document.getElementById("water-calc-input");
   const status = document.getElementById("water-calc-status");
   const output = document.getElementById("water-calc-output");
 
-  // Glasgow elements
+  // Glasgow UI elements
   const glasgowWaterChargeEl = document.getElementById("glasgow-water-charge");
   const glasgowSewerChargeEl = document.getElementById("glasgow-sewer-charge");
   const glasgowGrandTotalEl = document.getElementById("glasgow-grand-total");
 
-  // Rockbridge PSA elements
+  // Rockbridge PSA UI elements
   const waterAccountChargeEl = document.getElementById("water-account-charge");
   const sewerAccountChargeEl = document.getElementById("sewer-account-charge");
   const waterTotalEl = document.getElementById("water-total");
@@ -56,23 +82,19 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // --- Glasgow VA In-Town Residential Calculations ---
-    const overage = Math.max(0, valueEntered - 3.0);
+    // --- Glasgow VA Calculations ---
+    const overage = Math.max(0, valueEntered - GLASGOW_RATES.BASE_ALLOWANCE_K_GAL);
     
-    // Water: $35.00 base (first 3,000 gal) + $0.54 / 100 gal ($5.40 / 1,000 gal) overage
-    const glasgowWaterCharge = 35.00 + (overage * 5.40);
-    
-    // Sewer: $36.50 base (first 3,000 gal) + $0.26 / 100 gal ($2.60 / 1,000 gal) overage
-    const glasgowSewerCharge = 36.50 + (overage * 2.60);
-    
+    const glasgowWaterCharge = GLASGOW_RATES.WATER_BASE_FEE + (overage * GLASGOW_RATES.WATER_OVERAGE_PER_K);
+    const glasgowSewerCharge = GLASGOW_RATES.SEWER_BASE_FEE + (overage * GLASGOW_RATES.SEWER_OVERAGE_PER_K);
     const glasgowGrandTotal = glasgowWaterCharge + glasgowSewerCharge;
 
     // --- Rockbridge PSA Calculations ---
-    const waterAccountCharge = 27.12 / 2;
-    const sewerAccountCharge = 41.67 / 2;
-    const waterTotal = valueEntered * 8.6;
-    const sewerTotal = valueEntered * 13.85;
-    const psaGrandTotal = (valueEntered * 22.45) + waterAccountCharge + sewerAccountCharge;
+    const waterAccountCharge = PSA_RATES.WATER_ACCOUNT_CHARGE;
+    const sewerAccountCharge = PSA_RATES.SEWER_ACCOUNT_CHARGE;
+    const waterTotal = valueEntered * PSA_RATES.WATER_PER_K;
+    const sewerTotal = valueEntered * PSA_RATES.SEWER_PER_K;
+    const psaGrandTotal = waterTotal + sewerTotal + waterAccountCharge + sewerAccountCharge;
 
     // Output Glasgow results
     if (glasgowWaterChargeEl) glasgowWaterChargeEl.textContent = `Water Charge = $${formatCurrency(glasgowWaterCharge)}`;
