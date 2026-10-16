@@ -78,9 +78,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!sanitized || Number.isNaN(valueEntered)) {
       status.textContent = "Please enter a numeric decimal value.";
       status.className = "status-text status-error";
+      valueInput.setAttribute("aria-invalid", "true");
       output.classList.add("hidden");
       return;
     }
+
+    if (valueEntered >= 100) {
+      status.textContent = "Please enter usage in thousand gallons. Example: 5.9 for 5,900 gallons.";
+      status.className = "status-text status-error";
+      valueInput.setAttribute("aria-invalid", "true");
+      output.classList.add("hidden");
+      return;
+    }
+
+    valueInput.setAttribute("aria-invalid", "false");
 
     // --- Glasgow VA Calculations ---
     const overage = Math.max(0, valueEntered - GLASGOW_RATES.BASE_ALLOWANCE_K_GAL);
