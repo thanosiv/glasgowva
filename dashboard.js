@@ -1881,10 +1881,64 @@ function formatNoticeDateTime(value) {
   });
 }
 
+function toSafeNoticeUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const withProtocol = /^www\./i.test(raw) ? `https://${raw}` : raw;
+
+  try {
+    const parsed = new URL(withProtocol);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return '';
+    }
+    return parsed.href;
+  } catch {
+    return '';
+  }
+}
+
 function renderNoticeSummary(value) {
   const text = String(value || '').trim();
   if (!text) return 'No summary provided.';
-  return escapeHtml(text)
+
+  const pattern = /\[(.*?)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)|((?:https?:\/\/|www\.)[^\s<]+)/gi;
+  let rendered = '';
+  let lastIndex = 0;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    const matchIndex = match.index;
+    const matchText = match[0];
+    rendered += escapeHtml(text.slice(lastIndex, matchIndex));
+
+    const markdownLabel = match[1];
+    const markdownUrl = match[2];
+    const plainUrl = match[3];
+    let trailing = '';
+    let urlText = markdownUrl || plainUrl || '';
+
+    if (!markdownUrl) {
+      const trailingMatch = urlText.match(/[),.;!?]+$/);
+      if (trailingMatch) {
+        trailing = trailingMatch[0];
+        urlText = urlText.slice(0, -trailing.length);
+      }
+    }
+
+    const safeUrl = toSafeNoticeUrl(urlText);
+    if (safeUrl) {
+      const linkText = markdownLabel || urlText;
+      rendered += `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noreferrer noopener">${escapeHtml(linkText)}</a>${escapeHtml(trailing)}`;
+    } else {
+      rendered += escapeHtml(matchText);
+    }
+
+    lastIndex = matchIndex + matchText.length;
+  }
+
+  rendered += escapeHtml(text.slice(lastIndex));
+  return rendered
     .replace(/\r\n/g, '\n')
     .replace(/\n\n+/g, '<br><br>')
     .replace(/\n/g, '<br>');
