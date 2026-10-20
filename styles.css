@@ -2027,6 +2027,112 @@ iframe {
   color: #8e2a2a;
 }
 
+.manager-minutes-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.manager-minutes-actions-row {
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.manager-minute-modal {
+  width: min(860px, 100%);
+}
+
+.manager-minute-row {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.manager-minute-row h3 {
+  margin: 0;
+}
+
+.manager-minute-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.manager-minutes-public-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.manager-minute-public-card h2 {
+  margin: 0;
+}
+
+.manager-minute-public-card p {
+  margin-top: 0;
+}
+
+.manager-minute-public-meta {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.manager-minute-public-modal {
+  width: min(860px, 100%);
+}
+
+.manager-minute-public-modal-summary {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.manager-minute-more-button {
+  width: fit-content;
+  border: 1px solid rgba(15, 65, 92, 0.16);
+  background: white;
+  color: var(--primary);
+}
+
+.manager-minute-more-button:hover,
+.manager-minute-more-button:focus-visible {
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+
+.manager-minute-public-links h3 {
+  margin-bottom: 0.5rem;
+}
+
+.manager-minute-link-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.manager-minute-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.manager-minute-image-grid {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.manager-minute-image-grid a {
+  display: block;
+}
+
+.manager-minute-image-grid img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+}
+
 .government-members-list {
   display: grid;
   gap: 1rem;
@@ -2206,7 +2312,16 @@ iframe {
     align-items: flex-start;
   }
 
+  .manager-minute-row-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .public-notice-actions-row {
+    align-items: flex-start;
+  }
+
+  .manager-minutes-actions-row {
     align-items: flex-start;
   }
 }

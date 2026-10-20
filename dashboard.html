@@ -58,6 +58,7 @@
               <button type="button" role="tab" aria-selected="true" aria-controls="event-panel" id="event-tab" class="tab-button">Create event</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="upload-panel" id="upload-tab" class="tab-button">Upload documents</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="notices-panel" id="notices-tab" class="tab-button">Public Notices</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="manager-minutes-panel" id="manager-minutes-tab" class="tab-button">Town Manager Minutes</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="government-panel" id="government-tab" class="tab-button">Manage Government</button>
               <!--button type="button" role="tab" aria-selected="false" aria-controls="sms-panel" id="sms-tab" class="tab-button">Messaging</button-->
               <button type="button" role="tab" aria-selected="false" aria-controls="service-requests-panel" id="service-requests-tab" class="tab-button">Service requests</button>
@@ -78,6 +79,21 @@
 
               <div id="public-notice-list" class="public-notice-list">
                 <article class="card"><p>Loading notices…</p></article>
+              </div>
+            </div>
+
+            <div id="manager-minutes-panel" role="tabpanel" aria-labelledby="manager-minutes-tab" class="tab-panel hidden">
+              <div class="panel-copy">
+                <p>Publish updates from the Town Manager, including links, images, and scheduled go-live dates.</p>
+              </div>
+
+              <div class="form-actions manager-minutes-actions-row">
+                <button type="button" id="manager-minutes-open-create" class="button button-primary">Create minute</button>
+                <span id="manager-minutes-list-status" class="status-text" aria-live="polite"></span>
+              </div>
+
+              <div id="manager-minutes-list" class="manager-minutes-list">
+                <article class="card"><p>Loading Town Manager minutes…</p></article>
               </div>
             </div>
 
@@ -557,6 +573,50 @@
       </div>
     </div>
 
+    <div id="manager-minute-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal manager-minute-modal" role="dialog" aria-modal="true" aria-labelledby="manager-minute-modal-title">
+        <button type="button" id="manager-minute-modal-close" class="modal-close" aria-label="Close Town Manager minute editor">×</button>
+        <h3 id="manager-minute-modal-title">Create Town Manager minute</h3>
+        <form id="manager-minute-form" class="dashboard-form">
+          <input id="manager-minute-id" type="hidden" value="" />
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="manager-minute-title">Title</label>
+              <input id="manager-minute-title" type="text" placeholder="e.g. Water line improvements update" required />
+            </div>
+            <div class="form-group full-width">
+              <label for="manager-minute-summary">Description</label>
+              <textarea id="manager-minute-summary" rows="6" placeholder="Write the full Town Manager update."></textarea>
+            </div>
+            <div class="form-group full-width">
+              <label for="manager-minute-links">Links (one URL per line)</label>
+              <textarea id="manager-minute-links" rows="3" placeholder="https://example.com/agenda.pdf"></textarea>
+            </div>
+            <div class="form-group full-width">
+              <label for="manager-minute-images">Image URLs (one URL per line)</label>
+              <textarea id="manager-minute-images" rows="3" placeholder="https://example.com/image.jpg"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="manager-minute-status">Status</label>
+              <select id="manager-minute-status">
+                <option value="draft">Draft</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="live">Live</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="manager-minute-live-at">Go live at</label>
+              <input id="manager-minute-live-at" type="datetime-local" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Save minute</button>
+            <span id="manager-minute-status-text" class="status-text" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <script>
       window.siteConfig = {
         uploadBucket: "glasgow-va",
@@ -567,6 +627,8 @@
         calendarEndpoint: "https://calendarwrite-821248093008.us-east4.run.app",
         governmentEndpoint: "https://uploadimage-821248093008.us-east4.run.app",
         publicNoticesEndpoint: "https://publicnotices-821248093008.us-east4.run.app",
+        managerMinutesEndpoint: "https://managerminutes-821248093008.us-east4.run.app",
+        managerMinutesDataUrl: "./assets/manager-minutes/minutes.json",
         serviceRequestsEndpoint: "https://servicerequests-821248093008.us-east4.run.app",
         councilApiEndpoint: "https://councilimages-821248093008.us-east4.run.app",
         smsEndpoint: "https://twiliosms-821248093008.us-east4.run.app",

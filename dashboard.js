@@ -9,6 +9,12 @@ const noticesState = {
   notices: [],
 };
 
+const managerMinutesState = {
+  entries: [],
+};
+
+const managerMinutesStorageKey = 'town-of-glasgow-manager-minutes-fallback';
+
 const serviceRequestsStorageKey = 'town-of-glasgow-service-requests-fallback';
 const serviceRequestStatusOptions = ['New', 'In Progress', 'Completed', 'Closed'];
 const userManagementState = {
@@ -1289,6 +1295,11 @@ function attachDashboardEvents() {
   const publicNoticeModal = document.getElementById('public-notice-modal');
   const publicNoticeModalCloseButton = document.getElementById('public-notice-modal-close');
   const publicNoticeStatus = document.getElementById('public-notice-status');
+  const managerMinuteForm = document.getElementById('manager-minute-form');
+  const managerMinuteOpenCreateButton = document.getElementById('manager-minutes-open-create');
+  const managerMinuteModal = document.getElementById('manager-minute-modal');
+  const managerMinuteModalCloseButton = document.getElementById('manager-minute-modal-close');
+  const managerMinuteStatus = document.getElementById('manager-minute-status');
   const serviceRequestDetailsModal = document.getElementById('service-request-details-modal');
   const serviceRequestDetailsModalCloseButton = document.getElementById('service-request-details-modal-close');
   const serviceRequestDetailSaveButton = document.getElementById('service-request-detail-status-save');
@@ -1577,6 +1588,25 @@ function attachDashboardEvents() {
 
   publicNoticeStatus?.addEventListener('change', () => {
     updatePublicNoticeScheduleRequirement();
+  });
+
+  if (managerMinuteForm) {
+    managerMinuteForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      await saveManagerMinute();
+    });
+  }
+
+  managerMinuteOpenCreateButton?.addEventListener('click', () => {
+    openManagerMinuteModal('create');
+  });
+
+  managerMinuteModalCloseButton?.addEventListener('click', () => {
+    closeManagerMinuteModal();
+  });
+
+  managerMinuteStatus?.addEventListener('change', () => {
+    updateManagerMinuteScheduleRequirement();
   });
 }
 
@@ -2168,6 +2198,357 @@ async function savePublicNotice() {
   }
 }
 
+function normalizeManagerMinuteStatus(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'draft' || normalized === 'scheduled' || normalized === 'live') {
+    return normalized;
+  }
+  return 'draft';
+}
+
+function normalizeManagerMinuteList(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter((entry) => entry && typeof entry === 'object')
+    .map((entry) => ({
+      id: String(entry.id || '').trim(),
+      title: String(entry.title || '').trim(),
+      summary: String(entry.summary || '').trim(),
+      links: Array.isArray(entry.links) ? entry.links.map((url) => String(url || '').trim()).filter(Boolean) : [],
+      images: Array.isArray(entry.images) ? entry.images.map((url) => String(url || '').trim()).filter(Boolean) : [],
+      status: normalizeManagerMinuteStatus(entry.status),
+      liveAt: String(entry.liveAt || '').trim(),
+      createdAt: String(entry.createdAt || '').trim(),
+      updatedAt: String(entry.updatedAt || '').trim(),
+    }))
+    .filter((entry) => entry.title)
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.liveAt || left.updatedAt || left.createdAt || 0);
+      const rightTime = Date.parse(right.liveAt || right.updatedAt || right.createdAt || 0);
+      return rightTime - leftTime;
+    });
+}
+
+function normalizeTextareaUrlList(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) => toSafeNoticeUrl(line))
+    .filter(Boolean);
+}
+
+function getManagerMinuteDisplayState(entry) {
+  if (entry.status === 'draft') {
+    return 'Draft';
+  }
+
+  if (entry.status === 'scheduled') {
+    return 'Scheduled';
+  }
+
+  const liveAtMs = entry.liveAt ? Date.parse(entry.liveAt) : NaN;
+  if (!Number.isNaN(liveAtMs) && liveAtMs > Date.now()) {
+    return 'Scheduled';
+  }
+
+  return 'Live';
+}
+
+function updateManagerMinuteStatus(message, type = 'info') {
+  const status = document.getElementById('manager-minute-status-text');
+  if (!status) return;
+  status.textContent = message;
+  status.className = `status-text status-${type}`;
+}
+
+function updateManagerMinutesListStatus(message, type = 'info') {
+  const status = document.getElementById('manager-minutes-list-status');
+  if (!status) return;
+  status.textContent = message;
+  status.className = `status-text status-${type}`;
+}
+
+function openManagerMinuteModal(mode, entry = null) {
+  const modal = document.getElementById('manager-minute-modal');
+  const title = document.getElementById('manager-minute-modal-title');
+  if (!modal || !title) return;
+
+  if (mode === 'edit' && entry) {
+    populateManagerMinuteForm(entry);
+    title.textContent = 'Edit Town Manager minute';
+    updateManagerMinuteStatus(`Editing entry: ${entry.title}`, 'info');
+  } else {
+    resetManagerMinuteForm();
+    title.textContent = 'Create Town Manager minute';
+    updateManagerMinuteStatus('', 'info');
+  }
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeManagerMinuteModal() {
+  const modal = document.getElementById('manager-minute-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function populateManagerMinuteForm(entry) {
+  const idInput = document.getElementById('manager-minute-id');
+  const titleInput = document.getElementById('manager-minute-title');
+  const summaryInput = document.getElementById('manager-minute-summary');
+  const linksInput = document.getElementById('manager-minute-links');
+  const imagesInput = document.getElementById('manager-minute-images');
+  const statusInput = document.getElementById('manager-minute-status');
+  const liveAtInput = document.getElementById('manager-minute-live-at');
+
+  if (!idInput || !titleInput || !summaryInput || !linksInput || !imagesInput || !statusInput || !liveAtInput) return;
+
+  idInput.value = entry.id || '';
+  titleInput.value = entry.title || '';
+  summaryInput.value = entry.summary || '';
+  linksInput.value = (Array.isArray(entry.links) ? entry.links : []).join('\n');
+  imagesInput.value = (Array.isArray(entry.images) ? entry.images : []).join('\n');
+  statusInput.value = normalizeManagerMinuteStatus(entry.status);
+  liveAtInput.value = toLocalDateTimeInputValue(entry.liveAt);
+  updateManagerMinuteScheduleRequirement();
+}
+
+function resetManagerMinuteForm() {
+  const form = document.getElementById('manager-minute-form');
+  const idInput = document.getElementById('manager-minute-id');
+  const statusInput = document.getElementById('manager-minute-status');
+  const liveAtInput = document.getElementById('manager-minute-live-at');
+
+  form?.reset();
+  if (idInput) idInput.value = '';
+  if (statusInput) statusInput.value = 'draft';
+  if (liveAtInput) liveAtInput.required = false;
+}
+
+function updateManagerMinuteScheduleRequirement() {
+  const statusInput = document.getElementById('manager-minute-status');
+  const liveAtInput = document.getElementById('manager-minute-live-at');
+  if (!statusInput || !liveAtInput) return;
+  liveAtInput.required = statusInput.value === 'scheduled';
+}
+
+function getFallbackManagerMinutes() {
+  try {
+    const raw = localStorage.getItem(managerMinutesStorageKey);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return normalizeManagerMinuteList(parsed);
+  } catch (error) {
+    console.warn('Unable to read fallback manager minutes.', error);
+    return [];
+  }
+}
+
+function saveFallbackManagerMinutes(entries) {
+  localStorage.setItem(managerMinutesStorageKey, JSON.stringify(Array.isArray(entries) ? entries : []));
+}
+
+function renderManagerMinutesList() {
+  const container = document.getElementById('manager-minutes-list');
+  if (!container) return;
+
+  if (!managerMinutesState.entries.length) {
+    container.innerHTML = '<article class="card"><p>No entries yet. Create one to get started.</p></article>';
+    return;
+  }
+
+  container.innerHTML = managerMinutesState.entries.map((entry) => {
+    const displayState = getManagerMinuteDisplayState(entry);
+    return `
+      <article class="card manager-minute-row">
+        <div class="manager-minute-row-header">
+          <h3>${escapeHtml(entry.title)}</h3>
+          <span class="public-notice-pill public-notice-pill-${displayState.toLowerCase()}">${escapeHtml(displayState)}</span>
+        </div>
+        <p class="public-notice-row-meta">Go live: ${escapeHtml(formatNoticeDateTime(entry.liveAt))} · Links: ${entry.links.length} · Images: ${entry.images.length}</p>
+        <p>${renderNoticeSummary(entry.summary || 'No description provided.')}</p>
+        <div class="form-actions">
+          <button type="button" class="button" data-manager-minute-edit-id="${escapeHtml(entry.id)}">Edit minute</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  container.querySelectorAll('[data-manager-minute-edit-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const entryId = button.getAttribute('data-manager-minute-edit-id') || '';
+      const entry = managerMinutesState.entries.find((candidate) => candidate.id === entryId);
+      if (!entry) return;
+      openManagerMinuteModal('edit', entry);
+    });
+  });
+}
+
+async function loadManagerMinutes() {
+  const list = document.getElementById('manager-minutes-list');
+  if (list) {
+    list.innerHTML = '<article class="card"><p>Loading Town Manager minutes…</p></article>';
+  }
+
+  const endpoint = String(window.siteConfig?.managerMinutesEndpoint || '').trim();
+  if (endpoint) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(`Unable to load Town Manager minutes (${response.status}).`);
+      }
+
+      const payload = await response.json();
+      managerMinutesState.entries = normalizeManagerMinuteList(payload?.entries || payload?.minutes);
+      renderManagerMinutesList();
+      updateManagerMinutesListStatus('Town Manager minutes loaded.', 'info');
+      return;
+    } catch (error) {
+      if (list) {
+        list.innerHTML = `<article class="card"><p>${escapeHtml(error.message)}</p></article>`;
+      }
+      updateManagerMinutesListStatus(error.message, 'error');
+      return;
+    }
+  }
+
+  const localEntries = getFallbackManagerMinutes();
+  if (localEntries.length) {
+    managerMinutesState.entries = localEntries;
+    renderManagerMinutesList();
+    updateManagerMinutesListStatus('Loaded from local fallback storage.', 'info');
+    return;
+  }
+
+  const dataUrl = String(window.siteConfig?.managerMinutesDataUrl || '').trim();
+  if (!dataUrl) {
+    managerMinutesState.entries = [];
+    renderManagerMinutesList();
+    updateManagerMinutesListStatus('No data source configured.', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch(dataUrl);
+    if (!response.ok) {
+      throw new Error(`Unable to load local data (${response.status}).`);
+    }
+
+    const payload = await response.json();
+    managerMinutesState.entries = normalizeManagerMinuteList(payload?.entries || payload?.minutes);
+    renderManagerMinutesList();
+    updateManagerMinutesListStatus('Town Manager minutes loaded.', 'info');
+  } catch (error) {
+    managerMinutesState.entries = [];
+    if (list) {
+      list.innerHTML = `<article class="card"><p>${escapeHtml(error.message)}</p></article>`;
+    }
+    updateManagerMinutesListStatus(error.message, 'error');
+  }
+}
+
+async function saveManagerMinute() {
+  const id = String(document.getElementById('manager-minute-id')?.value || '').trim();
+  const title = String(document.getElementById('manager-minute-title')?.value || '').trim();
+  const summary = String(document.getElementById('manager-minute-summary')?.value || '').trim();
+  const links = normalizeTextareaUrlList(document.getElementById('manager-minute-links')?.value || '');
+  const images = normalizeTextareaUrlList(document.getElementById('manager-minute-images')?.value || '');
+  const status = normalizeManagerMinuteStatus(document.getElementById('manager-minute-status')?.value || 'draft');
+  const liveAt = toIsoStringOrEmpty(document.getElementById('manager-minute-live-at')?.value || '');
+
+  if (!title) {
+    updateManagerMinuteStatus('Title is required.', 'error');
+    return;
+  }
+
+  if (status === 'scheduled' && !liveAt) {
+    updateManagerMinuteStatus('Scheduled entries require a go-live date/time.', 'error');
+    return;
+  }
+
+  updateManagerMinuteStatus('Saving Town Manager minute…', 'info');
+
+  const endpoint = String(window.siteConfig?.managerMinutesEndpoint || '').trim();
+  if (endpoint) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: getDashboardAuthHeaders({
+          'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify({
+          action: 'save',
+          entry: {
+            id,
+            title,
+            summary,
+            links,
+            images,
+            status,
+            liveAt,
+          }
+        })
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        const messageParts = [
+          String(payload?.error || 'Failed to save Town Manager minute.').trim(),
+          String(payload?.reason || '').trim(),
+          String(payload?.details || '').trim(),
+          payload?.code ? `code: ${String(payload.code)}` : ''
+        ].filter(Boolean);
+        throw new Error(messageParts.join(' | '));
+      }
+
+      managerMinutesState.entries = normalizeManagerMinuteList(payload?.entries || payload?.minutes);
+      renderManagerMinutesList();
+      updateManagerMinuteStatus('Town Manager minute saved successfully.', 'success');
+      updateManagerMinutesListStatus('Town Manager minute saved successfully.', 'success');
+      closeManagerMinuteModal();
+      resetManagerMinuteForm();
+      return;
+    } catch (error) {
+      if (error instanceof TypeError && /fetch/i.test(error.message || '')) {
+        updateManagerMinuteStatus('Unable to reach the Town Manager minutes service.', 'error');
+        return;
+      }
+      updateManagerMinuteStatus(error.message, 'error');
+      return;
+    }
+  }
+
+  const currentEntries = getFallbackManagerMinutes();
+  const nowIso = new Date().toISOString();
+  const nextId = id || `manager-minute-${Date.now()}`;
+  const existing = currentEntries.find((entry) => entry.id === nextId);
+  const nextEntry = {
+    id: nextId,
+    title,
+    summary,
+    links,
+    images,
+    status,
+    liveAt,
+    createdAt: existing?.createdAt || nowIso,
+    updatedAt: nowIso,
+  };
+
+  const nextEntries = [
+    nextEntry,
+    ...currentEntries.filter((entry) => entry.id !== nextId),
+  ];
+
+  managerMinutesState.entries = normalizeManagerMinuteList(nextEntries);
+  saveFallbackManagerMinutes(managerMinutesState.entries);
+  renderManagerMinutesList();
+  updateManagerMinuteStatus('Town Manager minute saved to local fallback storage.', 'success');
+  updateManagerMinutesListStatus('Town Manager minute saved locally (endpoint not configured).', 'success');
+  closeManagerMinuteModal();
+  resetManagerMinuteForm();
+}
+
 async function loadGovernmentData() {
   if (!ensureDashboardAuth()) {
     return;
@@ -2707,8 +3088,10 @@ function showDashboard(token) {
   refreshServiceRequestsLog();
   loadUsers();
   loadPublicNotices();
+  loadManagerMinutes();
   loadAnalyticsDashboard();
   updatePublicNoticeScheduleRequirement();
+  updateManagerMinuteScheduleRequirement();
   loadGovernmentData().catch((error) => {
     updateGovernmentStatus(error.message, 'error');
   });

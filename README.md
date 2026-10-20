@@ -44,6 +44,7 @@ This project is served as a static front-end with live Google Cloud Run / Cloud 
 - `adminlogin` — issues signed admin session tokens.
 - `adminusers` — manages dashboard users; full user management is admin-only, while non-admin users are limited to their own account record.
 - `publicnotices` — public GET access; admin save/update requires validated session auth.
+- `managerminutes` — public GET access; admin save/update requires validated session auth and persists a single JSON file in GCS.
 - `calendarwrite` — creates and updates Google Calendar events; requires validated session auth.
 - `servicerequests` — public create/lookup; protected admin status updates require validated session auth.
 - `uploaddocuments` — document upload endpoint; requires validated session auth.
@@ -63,6 +64,8 @@ This project is served as a static front-end with live Google Cloud Run / Cloud 
 - `GOOGLE_CALENDAR_TIMEZONE` — optional timezone override.
 - `DOCUMENTS_PREFIX` — optional documents listing prefix used by `readdocuments`.
 - `AGENDA_PREFIX` — optional agenda lookup prefix used by `readdocuments`.
+- `MANAGER_MINUTES_PREFIX` — optional folder prefix for `managerminutes` JSON storage path. Default: `manager-minutes/`.
+- `MANAGER_MINUTES_FILE` — optional file name for `managerminutes` storage object. Default: `minutes.json`.
 - `TWILIO_*` values — only for SMS functionality.
 
 ### Production hardening

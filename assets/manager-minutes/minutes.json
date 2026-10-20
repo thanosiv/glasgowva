@@ -1,0 +1,32 @@
+{
+  "entries": [
+    {
+      "id": "manager-minute-2026-10-18-utilities",
+      "title": "Utility Line Maintenance Progress",
+      "summary": "Public works crews completed phase one repairs along Blue Ridge Road. Final paving is scheduled for next week, weather permitting.",
+      "links": [
+        "https://www.glasgowvirginia.org/documents.html"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1473445361085-b9a07f55608b?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "status": "live",
+      "liveAt": "2026-10-18T13:00:00.000Z",
+      "createdAt": "2026-10-18T12:30:00.000Z",
+      "updatedAt": "2026-10-18T13:00:00.000Z"
+    },
+    {
+      "id": "manager-minute-2026-10-24-festival",
+      "title": "Fall Festival Operations Note",
+      "summary": "Town Hall is coordinating with public safety and parks staff for temporary street closures during the annual Fall Festival.",
+      "links": [
+        "https://www.glasgowvirginia.org/index.html#events"
+      ],
+      "images": [],
+      "status": "scheduled",
+      "liveAt": "2026-10-24T14:00:00.000Z",
+      "createdAt": "2026-10-19T09:00:00.000Z",
+      "updatedAt": "2026-10-19T09:00:00.000Z"
+    }
+  ]
+}
