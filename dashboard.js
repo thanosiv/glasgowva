@@ -1301,6 +1301,9 @@ function attachDashboardEvents() {
   const managerMinuteOpenCreateButton = document.getElementById('manager-minutes-open-create');
   const managerMinuteModal = document.getElementById('manager-minute-modal');
   const managerMinuteModalCloseButton = document.getElementById('manager-minute-modal-close');
+  const managerMinuteHelpOpenButton = document.getElementById('manager-minute-help-open');
+  const managerMinuteHelpModal = document.getElementById('manager-minute-help-modal');
+  const managerMinuteHelpCloseButton = document.getElementById('manager-minute-help-close');
   const managerMinuteStatus = document.getElementById('manager-minute-status');
   const serviceRequestDetailsModal = document.getElementById('service-request-details-modal');
   const serviceRequestDetailsModalCloseButton = document.getElementById('service-request-details-modal-close');
@@ -1605,6 +1608,26 @@ function attachDashboardEvents() {
 
   managerMinuteModalCloseButton?.addEventListener('click', () => {
     closeManagerMinuteModal();
+  });
+
+  managerMinuteHelpOpenButton?.addEventListener('click', () => {
+    openManagerMinuteHelpModal();
+  });
+
+  managerMinuteHelpCloseButton?.addEventListener('click', () => {
+    closeManagerMinuteHelpModal();
+  });
+
+  managerMinuteHelpModal?.addEventListener('click', (event) => {
+    if (event.target === managerMinuteHelpModal) {
+      closeManagerMinuteHelpModal();
+    }
+  });
+
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && managerMinuteHelpModal && !managerMinuteHelpModal.classList.contains('hidden')) {
+      closeManagerMinuteHelpModal();
+    }
   });
 
   managerMinuteStatus?.addEventListener('change', () => {
@@ -2214,7 +2237,8 @@ function normalizeManagerMinuteList(items) {
     .map((entry) => ({
       id: String(entry.id || '').trim(),
       title: String(entry.title || '').trim(),
-      summary: String(entry.summary || '').trim(),
+      content: String(entry.content || entry.summary || '').trim(),
+      summary: String(entry.summary || entry.content || '').trim(),
       links: Array.isArray(entry.links) ? entry.links.map((url) => String(url || '').trim()).filter(Boolean) : [],
       images: Array.isArray(entry.images) ? entry.images.map((url) => String(url || '').trim()).filter(Boolean) : [],
       status: normalizeManagerMinuteStatus(entry.status),
@@ -2235,6 +2259,119 @@ function normalizeTextareaUrlList(value) {
     .split(/\r?\n/)
     .map((line) => toSafeNoticeUrl(line))
     .filter(Boolean);
+}
+
+function renderSimpleMarkdown(value) {
+  const text = String(value || '').trim();
+  if (!text) return '<p>No description provided.</p>';
+
+  const renderInline = (input) => {
+    let html = escapeHtml(input);
+
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/\+\+(.+?)\+\+/g, '<u>$1</u>');
+
+    html = html.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/gi, (full, altText, rawUrl) => {
+      const safe = toSafeNoticeUrl(rawUrl);
+      if (!safe) return escapeHtml(full);
+      return `<img class="manager-minute-inline-image" src="${escapeHtml(safe)}" alt="${escapeHtml(altText || '')}" loading="lazy" />`;
+    });
+
+    html = html.replace(/\[([^\]]+)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)/gi, (full, label, rawUrl) => {
+      const safe = toSafeNoticeUrl(rawUrl);
+      if (!safe) return escapeHtml(full);
+      return `<a href="${escapeHtml(safe)}" target="_blank" rel="noreferrer noopener">${escapeHtml(label)}</a>`;
+    });
+
+    html = html.replace(/(^|\s)((?:https?:\/\/|www\.)[^\s<]+)/gi, (full, prefix, rawUrl) => {
+      const safe = toSafeNoticeUrl(rawUrl);
+      if (!safe) return full;
+      return `${prefix}<a href="${escapeHtml(safe)}" target="_blank" rel="noreferrer noopener">${escapeHtml(rawUrl)}</a>`;
+    });
+
+    return html;
+  };
+
+  const lines = text.replace(/\r/g, '').split('\n');
+  const chunks = [];
+  let paragraphLines = [];
+  let listItems = [];
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    const paragraphHtml = paragraphLines.map((line) => renderInline(line)).join('<br>');
+    chunks.push(`<p>${paragraphHtml}</p>`);
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    const listHtml = listItems.map((item) => `<li>${renderInline(item)}</li>`).join('');
+    chunks.push(`<ul>${listHtml}</ul>`);
+    listItems = [];
+  };
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushParagraph();
+      flushList();
+      return;
+    }
+
+    const headingMatch = line.match(/^(#{1,6})\s*(.+)$/);
+    if (headingMatch && headingMatch[2]?.trim()) {
+      flushParagraph();
+      flushList();
+      const level = Math.min(headingMatch[1].length, 6);
+      chunks.push(`<h${level}>${renderInline(headingMatch[2].trim())}</h${level}>`);
+      return;
+    }
+
+    const listMatch = line.match(/^[-*]\s+(.+)$/);
+    if (listMatch) {
+      flushParagraph();
+      listItems.push(listMatch[1].trim());
+      return;
+    }
+
+    flushList();
+
+    const imageOnly = line.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/i);
+    if (imageOnly) {
+      flushParagraph();
+      const alt = escapeHtml(imageOnly[1] || '');
+      const url = toSafeNoticeUrl(imageOnly[2]);
+      if (!url) {
+        chunks.push(`<p>${escapeHtml(line)}</p>`);
+      } else {
+        chunks.push(`<p><img class="manager-minute-inline-image" src="${escapeHtml(url)}" alt="${alt}" loading="lazy" /></p>`);
+      }
+      return;
+    }
+
+    paragraphLines.push(line);
+  });
+
+  flushParagraph();
+  flushList();
+
+  return chunks.join('');
+}
+
+function toOverviewTextFromContent(value, maxLength = 180) {
+  const text = String(value || '')
+    .replace(/!\[[^\]]*\]\(([^)]+)\)/g, '')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/(^|\s)(https?:\/\/|www\.)[^\s]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!text) return 'No description provided.';
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trimEnd()}...`;
 }
 
 function getManagerMinuteDisplayState(entry) {
@@ -2294,22 +2431,32 @@ function closeManagerMinuteModal() {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+function openManagerMinuteHelpModal() {
+  const modal = document.getElementById('manager-minute-help-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeManagerMinuteHelpModal() {
+  const modal = document.getElementById('manager-minute-help-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
 function populateManagerMinuteForm(entry) {
   const idInput = document.getElementById('manager-minute-id');
   const titleInput = document.getElementById('manager-minute-title');
-  const summaryInput = document.getElementById('manager-minute-summary');
-  const linksInput = document.getElementById('manager-minute-links');
-  const imagesInput = document.getElementById('manager-minute-images');
+  const contentInput = document.getElementById('manager-minute-content');
   const statusInput = document.getElementById('manager-minute-status');
   const liveAtInput = document.getElementById('manager-minute-live-at');
 
-  if (!idInput || !titleInput || !summaryInput || !linksInput || !imagesInput || !statusInput || !liveAtInput) return;
+  if (!idInput || !titleInput || !contentInput || !statusInput || !liveAtInput) return;
 
   idInput.value = entry.id || '';
   titleInput.value = entry.title || '';
-  summaryInput.value = entry.summary || '';
-  linksInput.value = (Array.isArray(entry.links) ? entry.links : []).join('\n');
-  imagesInput.value = (Array.isArray(entry.images) ? entry.images : []).join('\n');
+  contentInput.value = entry.content || entry.summary || '';
   statusInput.value = normalizeManagerMinuteStatus(entry.status);
   liveAtInput.value = toLocalDateTimeInputValue(entry.liveAt);
   updateManagerMinuteScheduleRequirement();
@@ -2420,7 +2567,7 @@ function renderManagerMinutesList() {
           <span class="public-notice-pill public-notice-pill-${displayState.toLowerCase()}">${escapeHtml(displayState)}</span>
         </div>
         <p class="public-notice-row-meta">Go live: ${escapeHtml(formatNoticeDateTime(entry.liveAt))} · Links: ${entry.links.length} · Images: ${entry.images.length}</p>
-        <p>${escapeHtml(getManagerMinuteOverview(entry.summary))}</p>
+        <p>${escapeHtml(toOverviewTextFromContent(entry.content || entry.summary))}</p>
         <div class="form-actions">
           <button type="button" class="button" data-manager-minute-edit-id="${escapeHtml(entry.id)}">Edit minute</button>
         </div>
@@ -2511,9 +2658,7 @@ async function loadManagerMinutes() {
 async function saveManagerMinute() {
   const id = String(document.getElementById('manager-minute-id')?.value || '').trim();
   const title = String(document.getElementById('manager-minute-title')?.value || '').trim();
-  const summary = String(document.getElementById('manager-minute-summary')?.value || '').trim();
-  const links = normalizeTextareaUrlList(document.getElementById('manager-minute-links')?.value || '');
-  const images = normalizeTextareaUrlList(document.getElementById('manager-minute-images')?.value || '');
+  const content = String(document.getElementById('manager-minute-content')?.value || '').trim();
   const status = normalizeManagerMinuteStatus(document.getElementById('manager-minute-status')?.value || 'draft');
   const liveAt = toIsoStringOrEmpty(document.getElementById('manager-minute-live-at')?.value || '');
 
@@ -2542,9 +2687,10 @@ async function saveManagerMinute() {
           entry: {
             id,
             title,
-            summary,
-            links,
-            images,
+            content,
+            summary: content,
+            links: normalizeTextareaUrlList(content),
+            images: [],
             status,
             liveAt,
           }
@@ -2587,9 +2733,10 @@ async function saveManagerMinute() {
   const nextEntry = {
     id: nextId,
     title,
-    summary,
-    links,
-    images,
+    content,
+    summary: content,
+    links: normalizeTextareaUrlList(content),
+    images: [],
     status,
     liveAt,
     createdAt: existing?.createdAt || nowIso,

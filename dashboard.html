@@ -580,22 +580,18 @@
         <h3 id="manager-minute-modal-title">Create Glasgow In Fact entry</h3>
         <form id="manager-minute-form" class="dashboard-form">
           <input id="manager-minute-id" type="hidden" value="" />
+          <div class="manager-minute-help-row">
+            <button type="button" id="manager-minute-help-open" class="manager-minute-help-button" aria-label="Open Markdown help" title="Markdown help">?</button>
+            <span class="manager-minute-help-text">Formatting help</span>
+          </div>
           <div class="form-grid">
             <div class="form-group full-width">
               <label for="manager-minute-title">Title</label>
               <input id="manager-minute-title" type="text" placeholder="e.g. Water line improvements update" required />
             </div>
             <div class="form-group full-width">
-              <label for="manager-minute-summary">Description</label>
-              <textarea id="manager-minute-summary" rows="6" placeholder="Write the full Glasgow In Fact entry."></textarea>
-            </div>
-            <div class="form-group full-width">
-              <label for="manager-minute-links">Links (one URL per line)</label>
-              <textarea id="manager-minute-links" rows="3" placeholder="https://example.com/agenda.pdf"></textarea>
-            </div>
-            <div class="form-group full-width">
-              <label for="manager-minute-images">Image URLs (one URL per line)</label>
-              <textarea id="manager-minute-images" rows="3" placeholder="https://example.com/image.jpg"></textarea>
+              <label for="manager-minute-content">Post content (Markdown supported)</label>
+              <textarea id="manager-minute-content" rows="10" placeholder="Write your Glasgow In Fact entry here."></textarea>
             </div>
             <div class="form-group">
               <label for="manager-minute-status">Status</label>
@@ -615,6 +611,24 @@
             <span id="manager-minute-status-text" class="status-text" aria-live="polite"></span>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div id="manager-minute-help-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal manager-minute-help-modal" role="dialog" aria-modal="true" aria-labelledby="manager-minute-help-modal-title">
+        <button type="button" id="manager-minute-help-close" class="modal-close" aria-label="Close Markdown help">×</button>
+        <h3 id="manager-minute-help-modal-title">Markdown quick help</h3>
+        <div class="manager-minute-markdown-legend" role="note" aria-label="Markdown quick help examples">
+          <p>Use plain text, links, and images inline in your post content.</p>
+          <p><code># Main heading</code> and <code>##Section heading</code> (space optional)</p>
+          <p><code>- Bullet item</code> or <code>* Bullet item</code> for lists</p>
+          <p><code>**bold text**</code> or <code>__bold text__</code> for bold</p>
+          <p><code>++underlined text++</code> for underline</p>
+          <p><code>[Link text](https://example.com)</code> for links</p>
+          <p><code>![Image alt text](https://example.com/photo.jpg)</code> for images</p>
+          <p><code>https://example.com</code> for an auto-linked URL</p>
+          <p>Leave a blank line between paragraphs.</p>
+        </div>
       </div>
     </div>
 

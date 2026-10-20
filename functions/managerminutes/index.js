@@ -159,11 +159,13 @@ function normalizeStatus(value) {
 
 function normalizeEntry(entry) {
   const raw = entry && typeof entry === 'object' ? entry : {};
+  const content = String(raw.content || raw.summary || '').trim();
 
   return {
     id: String(raw.id || '').trim(),
     title: String(raw.title || '').trim(),
-    summary: String(raw.summary || '').trim(),
+    content,
+    summary: String(raw.summary || content).trim(),
     links: Array.isArray(raw.links) ? raw.links.map((url) => toSafeUrl(url)).filter(Boolean) : [],
     images: Array.isArray(raw.images) ? raw.images.map((url) => toSafeUrl(url)).filter(Boolean) : [],
     status: normalizeStatus(raw.status),

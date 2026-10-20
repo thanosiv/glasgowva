@@ -2041,6 +2041,62 @@ iframe {
   width: min(860px, 100%);
 }
 
+.manager-minute-help-modal {
+  width: min(620px, 100%);
+}
+
+.manager-minute-help-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.manager-minute-help-button {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 65, 92, 0.28);
+  background: #f8fbfd;
+  color: #0f415c;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.manager-minute-help-button:hover,
+.manager-minute-help-button:focus-visible {
+  background: #eaf2f7;
+  border-color: rgba(15, 65, 92, 0.45);
+}
+
+.manager-minute-help-text {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.manager-minute-markdown-legend {
+  border: 1px solid rgba(15, 65, 92, 0.14);
+  background: #f8fbfd;
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.manager-minute-markdown-legend p {
+  margin: 0;
+}
+
+.manager-minute-markdown-legend code {
+  font-size: 0.9rem;
+  background: #eaf2f7;
+  border: 1px solid rgba(15, 65, 92, 0.12);
+  border-radius: 0.4rem;
+  padding: 0.1rem 0.35rem;
+}
+
 .manager-minute-row {
   display: grid;
   gap: 0.65rem;
@@ -2082,7 +2138,22 @@ iframe {
 
 .manager-minute-public-modal-summary {
   margin: 0;
-  white-space: pre-wrap;
+}
+
+.manager-minute-public-modal-summary p {
+  margin: 0 0 0.75rem;
+}
+
+.manager-minute-public-modal-summary p:last-child {
+  margin-bottom: 0;
+}
+
+.manager-minute-inline-image {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 0.7rem;
+  border: 1px solid var(--border);
 }
 
 .manager-minute-more-button {

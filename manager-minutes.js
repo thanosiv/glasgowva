@@ -188,7 +188,8 @@ function normalizeManagerMinutes(items) {
     .map((entry) => ({
       id: String(entry.id || '').trim(),
       title: String(entry.title || '').trim(),
-      summary: String(entry.summary || '').trim(),
+      content: String(entry.content || entry.summary || '').trim(),
+      summary: String(entry.summary || entry.content || '').trim(),
       links: Array.isArray(entry.links) ? entry.links.map((url) => toSafeUrl(url)).filter(Boolean) : [],
       images: Array.isArray(entry.images) ? entry.images.map((url) => toSafeUrl(url)).filter(Boolean) : [],
       status: String(entry.status || '').trim().toLowerCase(),
@@ -236,10 +237,115 @@ function formatDateTime(value) {
 }
 
 function getOverviewText(value, maxLength = 180) {
-  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  const text = String(value || '')
+    .replace(/!\[[^\]]*\]\(([^)]+)\)/g, '')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/(^|\s)(https?:\/\/|www\.)[^\s]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!text) return 'No description provided.';
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength).trimEnd()}...`;
+}
+
+function renderSimpleMarkdown(value) {
+  const text = String(value || '').trim();
+  if (!text) return '<p>No description provided.</p>';
+
+  const renderInline = (input) => {
+    let html = escapeHtml(input);
+
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/\+\+(.+?)\+\+/g, '<u>$1</u>');
+
+    html = html.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/gi, (full, altText, rawUrl) => {
+      const safe = toSafeUrl(rawUrl);
+      if (!safe) return escapeHtml(full);
+      return `<img class="manager-minute-inline-image" src="${escapeHtml(safe)}" alt="${escapeHtml(altText || '')}" loading="lazy" />`;
+    });
+
+    html = html.replace(/\[([^\]]+)\]\(((?:https?:\/\/|www\.)[^\s)]+)\)/gi, (full, label, rawUrl) => {
+      const safe = toSafeUrl(rawUrl);
+      if (!safe) return escapeHtml(full);
+      return `<a href="${escapeHtml(safe)}" target="_blank" rel="noreferrer noopener">${escapeHtml(label)}</a>`;
+    });
+
+    html = html.replace(/(^|\s)((?:https?:\/\/|www\.)[^\s<]+)/gi, (full, prefix, rawUrl) => {
+      const safe = toSafeUrl(rawUrl);
+      if (!safe) return full;
+      return `${prefix}<a href="${escapeHtml(safe)}" target="_blank" rel="noreferrer noopener">${escapeHtml(rawUrl)}</a>`;
+    });
+
+    return html;
+  };
+
+  const lines = text.replace(/\r/g, '').split('\n');
+  const chunks = [];
+  let paragraphLines = [];
+  let listItems = [];
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    const paragraphHtml = paragraphLines.map((line) => renderInline(line)).join('<br>');
+    chunks.push(`<p>${paragraphHtml}</p>`);
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    const listHtml = listItems.map((item) => `<li>${renderInline(item)}</li>`).join('');
+    chunks.push(`<ul>${listHtml}</ul>`);
+    listItems = [];
+  };
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushParagraph();
+      flushList();
+      return;
+    }
+
+    const headingMatch = line.match(/^(#{1,6})\s*(.+)$/);
+    if (headingMatch && headingMatch[2]?.trim()) {
+      flushParagraph();
+      flushList();
+      const level = Math.min(headingMatch[1].length, 6);
+      chunks.push(`<h${level}>${renderInline(headingMatch[2].trim())}</h${level}>`);
+      return;
+    }
+
+    const listMatch = line.match(/^[-*]\s+(.+)$/);
+    if (listMatch) {
+      flushParagraph();
+      listItems.push(listMatch[1].trim());
+      return;
+    }
+
+    flushList();
+
+    const imageOnly = line.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/i);
+    if (imageOnly) {
+      flushParagraph();
+      const alt = escapeHtml(imageOnly[1] || '');
+      const url = toSafeUrl(imageOnly[2]);
+      if (!url) {
+        chunks.push(`<p>${escapeHtml(line)}</p>`);
+      } else {
+        chunks.push(`<p><img class="manager-minute-inline-image" src="${escapeHtml(url)}" alt="${alt}" loading="lazy" /></p>`);
+      }
+      return;
+    }
+
+    paragraphLines.push(line);
+  });
+
+  flushParagraph();
+  flushList();
+
+  return chunks.join('');
 }
 
 function openManagerMinutePublicModal(entry) {
@@ -247,37 +353,12 @@ function openManagerMinutePublicModal(entry) {
   const title = document.getElementById('manager-minute-public-modal-title');
   const meta = document.getElementById('manager-minute-public-modal-meta');
   const summary = document.getElementById('manager-minute-public-modal-summary');
-  const links = document.getElementById('manager-minute-public-modal-links');
-  const linksEmpty = document.getElementById('manager-minute-public-modal-links-empty');
-  const images = document.getElementById('manager-minute-public-modal-images');
 
-  if (!modal || !title || !meta || !summary || !links || !linksEmpty || !images) return;
+  if (!modal || !title || !meta || !summary) return;
 
   title.textContent = entry.title || 'Glasgow In Fact';
   meta.textContent = `Published: ${formatDateTime(entry.liveAt || entry.updatedAt || entry.createdAt)}`;
-  summary.innerHTML = escapeHtml(entry.summary || 'No description provided.').replace(/\n/g, '<br>');
-
-  if (entry.links.length) {
-    links.innerHTML = entry.links
-      .map((url) => `<li><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(url)}</a></li>`)
-      .join('');
-    links.classList.remove('hidden');
-    linksEmpty.classList.add('hidden');
-  } else {
-    links.innerHTML = '';
-    links.classList.add('hidden');
-    linksEmpty.classList.remove('hidden');
-  }
-
-  if (entry.images.length) {
-    images.innerHTML = entry.images
-      .map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer noopener"><img src="${escapeHtml(url)}" alt="Image for ${escapeHtml(entry.title)}" loading="lazy" /></a>`)
-      .join('');
-    images.classList.remove('hidden');
-  } else {
-    images.innerHTML = '';
-    images.classList.add('hidden');
-  }
+  summary.innerHTML = renderSimpleMarkdown(entry.content || entry.summary);
 
   modal.classList.remove('hidden');
 }
@@ -372,7 +453,7 @@ function renderManagerMinutes() {
         <p class="eyebrow">Glasgow In Fact</p>
         <h2>${escapeHtml(entry.title)}</h2>
         <p class="manager-minute-public-meta">Published: ${escapeHtml(formatDateTime(entry.liveAt || entry.updatedAt || entry.createdAt))}</p>
-        <p>${escapeHtml(getOverviewText(entry.summary))}</p>
+        <p>${escapeHtml(getOverviewText(entry.content || entry.summary))}</p>
         <button type="button" class="button manager-minute-more-button" data-manager-minute-id="${escapeHtml(entry.id)}">Click here for more</button>
       </article>
     `;
