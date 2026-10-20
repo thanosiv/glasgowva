@@ -2133,6 +2133,34 @@ iframe {
   border: 1px solid var(--border);
 }
 
+.pagination-shell {
+  margin-top: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pagination-button {
+  min-width: 110px;
+  border: 1px solid rgba(15, 65, 92, 0.16);
+  background: white;
+  color: var(--primary);
+  padding: 0.7rem 1rem;
+}
+
+.pagination-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-status {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .government-members-list {
   display: grid;
   gap: 1rem;

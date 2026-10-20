@@ -322,8 +322,8 @@ exports.managerMinutes = async function managerMinutes(req, res) {
 
     return res.status(500).json({
       error: req.method === 'GET'
-        ? 'Failed to read Town Manager minutes'
-        : 'Failed to save Town Manager minute',
+        ? 'Failed to read Glasgow In Fact entries'
+        : 'Failed to save Glasgow In Fact entry',
       details: error?.message || 'Unknown error',
       code: error?.code || null,
       reason: error?.errors?.[0]?.reason || null

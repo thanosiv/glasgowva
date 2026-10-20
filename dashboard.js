@@ -11,6 +11,8 @@ const noticesState = {
 
 const managerMinutesState = {
   entries: [],
+  currentPage: 1,
+  pageSize: 10,
 };
 
 const managerMinutesStorageKey = 'town-of-glasgow-manager-minutes-fallback';
@@ -2273,11 +2275,11 @@ function openManagerMinuteModal(mode, entry = null) {
 
   if (mode === 'edit' && entry) {
     populateManagerMinuteForm(entry);
-    title.textContent = 'Edit Town Manager minute';
+    title.textContent = 'Edit Glasgow In Fact entry';
     updateManagerMinuteStatus(`Editing entry: ${entry.title}`, 'info');
   } else {
     resetManagerMinuteForm();
-    title.textContent = 'Create Town Manager minute';
+    title.textContent = 'Create Glasgow In Fact entry';
     updateManagerMinuteStatus('', 'info');
   }
 
@@ -2338,7 +2340,7 @@ function getFallbackManagerMinutes() {
     const parsed = raw ? JSON.parse(raw) : [];
     return normalizeManagerMinuteList(parsed);
   } catch (error) {
-    console.warn('Unable to read fallback manager minutes.', error);
+    console.warn('Unable to read fallback Glasgow In Fact entries.', error);
     return [];
   }
 }
@@ -2347,16 +2349,69 @@ function saveFallbackManagerMinutes(entries) {
   localStorage.setItem(managerMinutesStorageKey, JSON.stringify(Array.isArray(entries) ? entries : []));
 }
 
+function getManagerMinuteOverview(value, maxLength = 180) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return 'No description provided.';
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trimEnd()}...`;
+}
+
+function renderManagerMinutesPagination(totalPages, totalEntries) {
+  const pagination = document.getElementById('manager-minutes-pagination');
+  if (!pagination) return;
+
+  if (totalPages <= 1) {
+    pagination.innerHTML = `<p class="pagination-status">Showing ${totalEntries} entry${totalEntries === 1 ? '' : 'ies'}.</p>`;
+    return;
+  }
+
+  const currentPage = managerMinutesState.currentPage;
+  const previousDisabled = currentPage <= 1 ? 'disabled' : '';
+  const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+
+  pagination.innerHTML = `
+    <button type="button" class="button pagination-button" data-manager-minute-page="prev" ${previousDisabled}>Previous</button>
+    <p class="pagination-status">Page ${currentPage} of ${totalPages} · ${totalEntries} entries</p>
+    <button type="button" class="button pagination-button" data-manager-minute-page="next" ${nextDisabled}>Next</button>
+  `;
+
+  pagination.querySelector('[data-manager-minute-page="prev"]')?.addEventListener('click', () => {
+    if (managerMinutesState.currentPage <= 1) return;
+    managerMinutesState.currentPage -= 1;
+    renderManagerMinutesList();
+  });
+
+  pagination.querySelector('[data-manager-minute-page="next"]')?.addEventListener('click', () => {
+    if (managerMinutesState.currentPage >= totalPages) return;
+    managerMinutesState.currentPage += 1;
+    renderManagerMinutesList();
+  });
+}
+
 function renderManagerMinutesList() {
   const container = document.getElementById('manager-minutes-list');
+  const pagination = document.getElementById('manager-minutes-pagination');
   if (!container) return;
 
   if (!managerMinutesState.entries.length) {
     container.innerHTML = '<article class="card"><p>No entries yet. Create one to get started.</p></article>';
+    if (pagination) pagination.innerHTML = '';
+    managerMinutesState.currentPage = 1;
     return;
   }
 
-  container.innerHTML = managerMinutesState.entries.map((entry) => {
+  const totalEntries = managerMinutesState.entries.length;
+  const pageSize = managerMinutesState.pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
+  if (managerMinutesState.currentPage > totalPages) {
+    managerMinutesState.currentPage = totalPages;
+  }
+
+  const startIndex = (managerMinutesState.currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const pageEntries = managerMinutesState.entries.slice(startIndex, endIndex);
+
+  container.innerHTML = pageEntries.map((entry) => {
     const displayState = getManagerMinuteDisplayState(entry);
     return `
       <article class="card manager-minute-row">
@@ -2365,13 +2420,15 @@ function renderManagerMinutesList() {
           <span class="public-notice-pill public-notice-pill-${displayState.toLowerCase()}">${escapeHtml(displayState)}</span>
         </div>
         <p class="public-notice-row-meta">Go live: ${escapeHtml(formatNoticeDateTime(entry.liveAt))} · Links: ${entry.links.length} · Images: ${entry.images.length}</p>
-        <p>${renderNoticeSummary(entry.summary || 'No description provided.')}</p>
+        <p>${escapeHtml(getManagerMinuteOverview(entry.summary))}</p>
         <div class="form-actions">
           <button type="button" class="button" data-manager-minute-edit-id="${escapeHtml(entry.id)}">Edit minute</button>
         </div>
       </article>
     `;
   }).join('');
+
+  renderManagerMinutesPagination(totalPages, totalEntries);
 
   container.querySelectorAll('[data-manager-minute-edit-id]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -2386,7 +2443,7 @@ function renderManagerMinutesList() {
 async function loadManagerMinutes() {
   const list = document.getElementById('manager-minutes-list');
   if (list) {
-    list.innerHTML = '<article class="card"><p>Loading Town Manager minutes…</p></article>';
+    list.innerHTML = '<article class="card"><p>Loading Glasgow In Fact entries…</p></article>';
   }
 
   const endpoint = String(window.siteConfig?.managerMinutesEndpoint || '').trim();
@@ -2396,13 +2453,14 @@ async function loadManagerMinutes() {
         method: 'GET',
       });
       if (!response.ok) {
-        throw new Error(`Unable to load Town Manager minutes (${response.status}).`);
+        throw new Error(`Unable to load Glasgow In Fact entries (${response.status}).`);
       }
 
       const payload = await response.json();
       managerMinutesState.entries = normalizeManagerMinuteList(payload?.entries || payload?.minutes);
+      managerMinutesState.currentPage = 1;
       renderManagerMinutesList();
-      updateManagerMinutesListStatus('Town Manager minutes loaded.', 'info');
+      updateManagerMinutesListStatus('Glasgow In Fact entries loaded.', 'info');
       return;
     } catch (error) {
       if (list) {
@@ -2416,6 +2474,7 @@ async function loadManagerMinutes() {
   const localEntries = getFallbackManagerMinutes();
   if (localEntries.length) {
     managerMinutesState.entries = localEntries;
+    managerMinutesState.currentPage = 1;
     renderManagerMinutesList();
     updateManagerMinutesListStatus('Loaded from local fallback storage.', 'info');
     return;
@@ -2437,8 +2496,9 @@ async function loadManagerMinutes() {
 
     const payload = await response.json();
     managerMinutesState.entries = normalizeManagerMinuteList(payload?.entries || payload?.minutes);
+    managerMinutesState.currentPage = 1;
     renderManagerMinutesList();
-    updateManagerMinutesListStatus('Town Manager minutes loaded.', 'info');
+    updateManagerMinutesListStatus('Glasgow In Fact entries loaded.', 'info');
   } catch (error) {
     managerMinutesState.entries = [];
     if (list) {
@@ -2467,7 +2527,7 @@ async function saveManagerMinute() {
     return;
   }
 
-  updateManagerMinuteStatus('Saving Town Manager minute…', 'info');
+  updateManagerMinuteStatus('Saving Glasgow In Fact entry…', 'info');
 
   const endpoint = String(window.siteConfig?.managerMinutesEndpoint || '').trim();
   if (endpoint) {
@@ -2494,7 +2554,7 @@ async function saveManagerMinute() {
       const payload = await response.json();
       if (!response.ok) {
         const messageParts = [
-          String(payload?.error || 'Failed to save Town Manager minute.').trim(),
+          String(payload?.error || 'Failed to save Glasgow In Fact entry.').trim(),
           String(payload?.reason || '').trim(),
           String(payload?.details || '').trim(),
           payload?.code ? `code: ${String(payload.code)}` : ''
@@ -2503,15 +2563,16 @@ async function saveManagerMinute() {
       }
 
       managerMinutesState.entries = normalizeManagerMinuteList(payload?.entries || payload?.minutes);
+  managerMinutesState.currentPage = 1;
       renderManagerMinutesList();
-      updateManagerMinuteStatus('Town Manager minute saved successfully.', 'success');
-      updateManagerMinutesListStatus('Town Manager minute saved successfully.', 'success');
+      updateManagerMinuteStatus('Glasgow In Fact entry saved successfully.', 'success');
+      updateManagerMinutesListStatus('Glasgow In Fact entry saved successfully.', 'success');
       closeManagerMinuteModal();
       resetManagerMinuteForm();
       return;
     } catch (error) {
       if (error instanceof TypeError && /fetch/i.test(error.message || '')) {
-        updateManagerMinuteStatus('Unable to reach the Town Manager minutes service.', 'error');
+        updateManagerMinuteStatus('Unable to reach the Glasgow In Fact service.', 'error');
         return;
       }
       updateManagerMinuteStatus(error.message, 'error');
@@ -2541,10 +2602,11 @@ async function saveManagerMinute() {
   ];
 
   managerMinutesState.entries = normalizeManagerMinuteList(nextEntries);
+  managerMinutesState.currentPage = 1;
   saveFallbackManagerMinutes(managerMinutesState.entries);
   renderManagerMinutesList();
-  updateManagerMinuteStatus('Town Manager minute saved to local fallback storage.', 'success');
-  updateManagerMinutesListStatus('Town Manager minute saved locally (endpoint not configured).', 'success');
+  updateManagerMinuteStatus('Glasgow In Fact entry saved to local fallback storage.', 'success');
+  updateManagerMinutesListStatus('Glasgow In Fact entry saved locally (endpoint not configured).', 'success');
   closeManagerMinuteModal();
   resetManagerMinuteForm();
 }

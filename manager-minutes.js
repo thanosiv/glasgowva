@@ -1,5 +1,7 @@
 const managerMinutesPublicState = {
-  entries: []
+  entries: [],
+  currentPage: 1,
+  pageSize: 10
 };
 
 const HEADER_INCLUDE_FALLBACK = `
@@ -251,7 +253,7 @@ function openManagerMinutePublicModal(entry) {
 
   if (!modal || !title || !meta || !summary || !links || !linksEmpty || !images) return;
 
-  title.textContent = entry.title || 'Town Manager Update';
+  title.textContent = entry.title || 'Glasgow In Fact';
   meta.textContent = `Published: ${formatDateTime(entry.liveAt || entry.updatedAt || entry.createdAt)}`;
   summary.innerHTML = escapeHtml(entry.summary || 'No description provided.').replace(/\n/g, '<br>');
 
@@ -307,21 +309,67 @@ function attachManagerMinutePublicModalEvents() {
   });
 }
 
+function renderManagerMinutesPublicPagination(totalPages, totalEntries) {
+  const pagination = document.getElementById('manager-minutes-public-pagination');
+  if (!pagination) return;
+
+  if (totalPages <= 1) {
+    pagination.innerHTML = `<p class="pagination-status">Showing ${totalEntries} entry${totalEntries === 1 ? '' : 'ies'}.</p>`;
+    return;
+  }
+
+  const currentPage = managerMinutesPublicState.currentPage;
+  const previousDisabled = currentPage <= 1 ? 'disabled' : '';
+  const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+
+  pagination.innerHTML = `
+    <button type="button" class="button pagination-button" data-public-minute-page="prev" ${previousDisabled}>Previous</button>
+    <p class="pagination-status">Page ${currentPage} of ${totalPages} · ${totalEntries} entries</p>
+    <button type="button" class="button pagination-button" data-public-minute-page="next" ${nextDisabled}>Next</button>
+  `;
+
+  pagination.querySelector('[data-public-minute-page="prev"]')?.addEventListener('click', () => {
+    if (managerMinutesPublicState.currentPage <= 1) return;
+    managerMinutesPublicState.currentPage -= 1;
+    renderManagerMinutes();
+  });
+
+  pagination.querySelector('[data-public-minute-page="next"]')?.addEventListener('click', () => {
+    if (managerMinutesPublicState.currentPage >= totalPages) return;
+    managerMinutesPublicState.currentPage += 1;
+    renderManagerMinutes();
+  });
+}
+
 function renderManagerMinutes() {
   const container = document.getElementById('manager-minutes-public-list');
+  const pagination = document.getElementById('manager-minutes-public-pagination');
   if (!container) return;
 
   const visibleEntries = managerMinutesPublicState.entries.filter(isManagerMinuteVisible);
 
   if (!visibleEntries.length) {
-    container.innerHTML = '<article class="card"><p>No Town Manager updates are currently live.</p></article>';
+    container.innerHTML = '<article class="card"><p>No Glasgow In Fact entries are currently live.</p></article>';
+    if (pagination) pagination.innerHTML = '';
+    managerMinutesPublicState.currentPage = 1;
     return;
   }
 
-  container.innerHTML = visibleEntries.map((entry) => {
+  const totalEntries = visibleEntries.length;
+  const pageSize = managerMinutesPublicState.pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
+  if (managerMinutesPublicState.currentPage > totalPages) {
+    managerMinutesPublicState.currentPage = totalPages;
+  }
+
+  const startIndex = (managerMinutesPublicState.currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const pageEntries = visibleEntries.slice(startIndex, endIndex);
+
+  container.innerHTML = pageEntries.map((entry) => {
     return `
       <article class="card manager-minute-public-card">
-        <p class="eyebrow">Town Manager Update</p>
+        <p class="eyebrow">Glasgow In Fact</p>
         <h2>${escapeHtml(entry.title)}</h2>
         <p class="manager-minute-public-meta">Published: ${escapeHtml(formatDateTime(entry.liveAt || entry.updatedAt || entry.createdAt))}</p>
         <p>${escapeHtml(getOverviewText(entry.summary))}</p>
@@ -330,10 +378,12 @@ function renderManagerMinutes() {
     `;
   }).join('');
 
+  renderManagerMinutesPublicPagination(totalPages, totalEntries);
+
   container.querySelectorAll('[data-manager-minute-id]').forEach((button) => {
     button.addEventListener('click', () => {
       const entryId = String(button.getAttribute('data-manager-minute-id') || '').trim();
-      const entry = visibleEntries.find((candidate) => candidate.id === entryId);
+      const entry = pageEntries.find((candidate) => candidate.id === entryId);
       if (!entry) return;
       openManagerMinutePublicModal(entry);
     });
@@ -348,11 +398,12 @@ async function loadManagerMinutes() {
     try {
       const response = await fetch(endpoint);
       if (!response.ok) {
-        throw new Error(`Unable to load Town Manager updates (${response.status}).`);
+        throw new Error(`Unable to load Glasgow In Fact entries (${response.status}).`);
       }
 
       const payload = await response.json();
       managerMinutesPublicState.entries = normalizeManagerMinutes(payload?.entries || payload?.minutes);
+      managerMinutesPublicState.currentPage = 1;
       renderManagerMinutes();
       return;
     } catch (error) {
@@ -369,11 +420,12 @@ async function loadManagerMinutes() {
   try {
     const response = await fetch(dataUrl);
     if (!response.ok) {
-      throw new Error(`Unable to load Town Manager updates data (${response.status}).`);
+      throw new Error(`Unable to load Glasgow In Fact data (${response.status}).`);
     }
 
     const payload = await response.json();
     managerMinutesPublicState.entries = normalizeManagerMinutes(payload?.entries || payload?.minutes);
+    managerMinutesPublicState.currentPage = 1;
     renderManagerMinutes();
   } catch (error) {
     console.warn(error);

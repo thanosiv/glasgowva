@@ -58,7 +58,7 @@
               <button type="button" role="tab" aria-selected="true" aria-controls="event-panel" id="event-tab" class="tab-button">Create event</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="upload-panel" id="upload-tab" class="tab-button">Upload documents</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="notices-panel" id="notices-tab" class="tab-button">Public Notices</button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="manager-minutes-panel" id="manager-minutes-tab" class="tab-button">Town Manager Minutes</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="manager-minutes-panel" id="manager-minutes-tab" class="tab-button">Glasgow In Fact</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="government-panel" id="government-tab" class="tab-button">Manage Government</button>
               <!--button type="button" role="tab" aria-selected="false" aria-controls="sms-panel" id="sms-tab" class="tab-button">Messaging</button-->
               <button type="button" role="tab" aria-selected="false" aria-controls="service-requests-panel" id="service-requests-tab" class="tab-button">Service requests</button>
@@ -84,7 +84,7 @@
 
             <div id="manager-minutes-panel" role="tabpanel" aria-labelledby="manager-minutes-tab" class="tab-panel hidden">
               <div class="panel-copy">
-                <p>Publish updates from the Town Manager, including links, images, and scheduled go-live dates.</p>
+                <p>Publish Glasgow In Fact entries with links, images, and scheduled go-live dates.</p>
               </div>
 
               <div class="form-actions manager-minutes-actions-row">
@@ -93,8 +93,9 @@
               </div>
 
               <div id="manager-minutes-list" class="manager-minutes-list">
-                <article class="card"><p>Loading Town Manager minutes…</p></article>
+                <article class="card"><p>Loading Glasgow In Fact entries…</p></article>
               </div>
+              <div id="manager-minutes-pagination" class="pagination-shell"></div>
             </div>
 
             <div id="government-panel" role="tabpanel" aria-labelledby="government-tab" class="tab-panel hidden">
@@ -575,8 +576,8 @@
 
     <div id="manager-minute-modal" class="modal-backdrop hidden" aria-hidden="true">
       <div class="modal manager-minute-modal" role="dialog" aria-modal="true" aria-labelledby="manager-minute-modal-title">
-        <button type="button" id="manager-minute-modal-close" class="modal-close" aria-label="Close Town Manager minute editor">×</button>
-        <h3 id="manager-minute-modal-title">Create Town Manager minute</h3>
+        <button type="button" id="manager-minute-modal-close" class="modal-close" aria-label="Close Glasgow In Fact editor">×</button>
+        <h3 id="manager-minute-modal-title">Create Glasgow In Fact entry</h3>
         <form id="manager-minute-form" class="dashboard-form">
           <input id="manager-minute-id" type="hidden" value="" />
           <div class="form-grid">
@@ -586,7 +587,7 @@
             </div>
             <div class="form-group full-width">
               <label for="manager-minute-summary">Description</label>
-              <textarea id="manager-minute-summary" rows="6" placeholder="Write the full Town Manager update."></textarea>
+              <textarea id="manager-minute-summary" rows="6" placeholder="Write the full Glasgow In Fact entry."></textarea>
             </div>
             <div class="form-group full-width">
               <label for="manager-minute-links">Links (one URL per line)</label>
