@@ -54,17 +54,36 @@
           </div>
 
           <div class="dashboard-card card">
-            <div class="dashboard-tabs" role="tablist" aria-label="Dashboard sections">
-              <button type="button" role="tab" aria-selected="true" aria-controls="event-panel" id="event-tab" class="tab-button">Create event</button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="upload-panel" id="upload-tab" class="tab-button">Upload documents</button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="notices-panel" id="notices-tab" class="tab-button">Public Notices</button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="manager-minutes-panel" id="manager-minutes-tab" class="tab-button">Glasgow In Fact</button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="government-panel" id="government-tab" class="tab-button">Manage Government</button>
-              <!--button type="button" role="tab" aria-selected="false" aria-controls="sms-panel" id="sms-tab" class="tab-button">Messaging</button-->
-              <button type="button" role="tab" aria-selected="false" aria-controls="service-requests-panel" id="service-requests-tab" class="tab-button">Service requests</button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="analytics-panel" id="analytics-tab" class="tab-button">Analytics</button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="users-panel" id="users-tab" class="tab-button">Users</button>
-              <button type="button" role="tab" aria-selected="false" aria-controls="future-panel" id="future-tab" class="tab-button">Future modules</button>
+            <div class="dashboard-tabs" aria-label="Dashboard sections">
+              <div class="dashboard-group-row" role="toolbar" aria-label="Workflow groups">
+                <button type="button" class="dashboard-group-button active-group" id="dashboard-group-publish" data-group="publish" aria-pressed="true">Plan &amp; Publish</button>
+                <button type="button" class="dashboard-group-button" id="dashboard-group-content" data-group="content" aria-pressed="false">Records &amp; Content</button>
+                <button type="button" class="dashboard-group-button" id="dashboard-group-ops" data-group="ops" aria-pressed="false">Resident Ops</button>
+                <button type="button" class="dashboard-group-button" id="dashboard-group-admin" data-group="admin" aria-pressed="false">Admin &amp; Reporting</button>
+              </div>
+
+              <div class="dashboard-group-select-wrap">
+                <label for="dashboard-group-select" class="sr-only">Select workflow section</label>
+                <select id="dashboard-group-select" class="dashboard-group-select" aria-label="Select workflow section">
+                  <option value="publish">Plan &amp; Publish</option>
+                  <option value="content">Records &amp; Content</option>
+                  <option value="ops">Resident Ops</option>
+                  <option value="admin">Admin &amp; Reporting</option>
+                </select>
+              </div>
+
+              <div class="dashboard-tool-row" role="tablist" aria-label="Dashboard tools">
+                <button type="button" role="tab" aria-selected="true" aria-controls="event-panel" id="event-tab" class="tab-button dashboard-tool-tab" data-group="publish">Meetings/Events</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="notices-panel" id="notices-tab" class="tab-button dashboard-tool-tab" data-group="publish">Public Notices</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="manager-minutes-panel" id="manager-minutes-tab" class="tab-button dashboard-tool-tab" data-group="publish">Glasgow In Fact</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="upload-panel" id="upload-tab" class="tab-button dashboard-tool-tab" data-group="content">Upload documents</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="government-panel" id="government-tab" class="tab-button dashboard-tool-tab" data-group="content">Manage Government</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="service-requests-panel" id="service-requests-tab" class="tab-button dashboard-tool-tab" data-group="ops">Service requests</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="users-panel" id="users-tab" class="tab-button dashboard-tool-tab" data-group="admin">Users</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="analytics-panel" id="analytics-tab" class="tab-button dashboard-tool-tab" data-group="admin">Analytics</button>
+                <!--button type="button" role="tab" aria-selected="false" aria-controls="sms-panel" id="sms-tab" class="tab-button dashboard-tool-tab" data-group="ops">Messaging</button-->
+                <button type="button" role="tab" aria-selected="false" aria-controls="future-panel" id="future-tab" class="tab-button dashboard-tool-tab hidden" data-group="future" aria-hidden="true">Future modules</button>
+              </div>
             </div>
 
             <div id="notices-panel" role="tabpanel" aria-labelledby="notices-tab" class="tab-panel hidden">
@@ -223,14 +242,25 @@
 
             <div id="analytics-panel" role="tabpanel" aria-labelledby="analytics-tab" class="tab-panel hidden">
               <div class="panel-copy">
-                <p>Track document and video engagement by date and filter down to a single item.</p>
+                <p>Track engagement by type and filter down to a single item.</p>
+              </div>
+
+              <div class="analytics-kind-row" role="toolbar" aria-label="Analytics type filter">
+                <button type="button" class="analytics-kind-button active-kind" data-analytics-kind="all" aria-pressed="true">All Items</button>
+                <button type="button" class="analytics-kind-button" data-analytics-kind="page" aria-pressed="false">Webpages</button>
+                <button type="button" class="analytics-kind-button" data-analytics-kind="document" aria-pressed="false">Documents</button>
+                <button type="button" class="analytics-kind-button" data-analytics-kind="video" aria-pressed="false">Videos</button>
               </div>
 
               <div class="analytics-filter-wrap">
-                <label for="analytics-filter-select">Filter by item</label>
+                <div class="analytics-filter-header-row">
+                  <label for="analytics-filter-select">Filter by item</label>
+                  <button type="button" id="analytics-refresh-button" class="button">Refresh</button>
+                </div>
                 <select id="analytics-filter-select">
                   <option value="all">All items</option>
                 </select>
+                <span id="analytics-refresh-status" class="status-text" aria-live="polite"></span>
               </div>
 
               <div class="analytics-chart-shell">
@@ -258,7 +288,7 @@
               </div>
             </div>
 
-            <div id="future-panel" role="tabpanel" aria-labelledby="future-tab" class="tab-panel hidden">
+            <div id="future-panel" role="tabpanel" aria-labelledby="future-tab" class="tab-panel hidden" aria-hidden="true">
               <div class="panel-copy">
                 <p>Planned modules and integrations for future phases of the Glasgow town platform.</p>
               </div>

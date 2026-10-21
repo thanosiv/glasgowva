@@ -75,8 +75,8 @@ function toAnalyticsMonthPath(timestamp) {
 
 function normalizeEvent(body) {
   const kind = String(body?.kind || '').trim().toLowerCase();
-  if (kind !== 'document' && kind !== 'video') {
-    throw new Error('kind must be document or video');
+  if (kind !== 'document' && kind !== 'video' && kind !== 'page') {
+    throw new Error('kind must be document, video, or page');
   }
 
   const href = String(body?.href || '').trim();
@@ -109,7 +109,7 @@ async function readMonthlyAnalyticsFile(storage, bucketName, objectName) {
     try {
       const parsed = JSON.parse(trimmed);
       const kind = String(parsed?.kind || '').trim().toLowerCase();
-      if (kind !== 'document' && kind !== 'video') continue;
+      if (kind !== 'document' && kind !== 'video' && kind !== 'page') continue;
       if (!parsed?.timestamp) continue;
       events.push(parsed);
     } catch {

@@ -56,6 +56,20 @@
     const normalizedKind = String(kind || '').trim().toLowerCase();
     const normalizedLabel = String(label || '').trim();
 
+    if (normalizedKind === 'page') {
+      const cleanedHref = String(href || '').trim();
+      if (normalizedLabel) return normalizedLabel;
+      if (cleanedHref) {
+        try {
+          const parsed = new URL(cleanedHref, 'https://example.com');
+          return parsed.pathname || cleanedHref;
+        } catch {
+          return cleanedHref;
+        }
+      }
+      return 'Unknown page';
+    }
+
     if (normalizedKind === 'document') {
       return normalizedLabel || getVideoDisplayName(href) || 'Untitled document';
     }
@@ -78,7 +92,7 @@
 
     for (const event of Array.isArray(events) ? events : []) {
       const kind = String(event?.kind || '').trim().toLowerCase();
-      if (kind !== 'document' && kind !== 'video') continue;
+      if (kind !== 'document' && kind !== 'video' && kind !== 'page') continue;
 
       const normalizedLabel = getAnalyticsEventFilterValue(event);
       if (normalizedSelection !== 'all' && normalizedLabel !== normalizedSelection) {

@@ -6,8 +6,9 @@
     'mp4', 'webm', 'mov', 'm4v', 'avi', 'ogv'
   ]);
 
-  const endpoint = String(window.siteConfig?.analyticsEndpoint || '').trim();
-  if (!endpoint) return;
+  function getAnalyticsEndpoint() {
+    return String(window.siteConfig?.analyticsEndpoint || '').trim();
+  }
 
   function getFileExtension(href) {
     try {
@@ -57,10 +58,28 @@
     };
   }
 
+  function buildPageViewPayload() {
+    const pageUrl = window.location.href;
+    const pagePath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    return {
+      kind: 'page',
+      href: pageUrl,
+      label: String(document.title || '').trim(),
+      pageUrl,
+      pagePath,
+      referrer: document.referrer || '',
+      timestamp: new Date().toISOString()
+    };
+  }
+
   function sendEvent(payload) {
+    const endpoint = getAnalyticsEndpoint();
+    if (!endpoint) return false;
+
     const body = JSON.stringify(payload);
     if (navigator.sendBeacon) {
-      if (navigator.sendBeacon(endpoint, body)) return;
+      if (navigator.sendBeacon(endpoint, body)) return true;
     }
 
     fetch(endpoint, {
@@ -69,6 +88,8 @@
       mode: 'no-cors',
       keepalive: true
     }).catch(() => {});
+
+    return true;
   }
 
   function onDocumentClick(event) {
@@ -85,6 +106,38 @@
 
     sendEvent(buildPayload(anchor, kind));
   }
+
+  function recordPageViewWithRetry() {
+    if (window.__analyticsPageViewSent) {
+      return;
+    }
+
+    const maxAttempts = 8;
+    const attemptDelayMs = 400;
+    let attempt = 0;
+
+    const trySend = () => {
+      if (window.__analyticsPageViewSent) {
+        return;
+      }
+
+      attempt += 1;
+      const sent = sendEvent(buildPageViewPayload());
+      if (sent) {
+        window.__analyticsPageViewSent = true;
+        return;
+      }
+
+      if (attempt < maxAttempts) {
+        window.setTimeout(trySend, attemptDelayMs);
+      }
+    };
+
+    trySend();
+  }
+
+  // Record one page-view event whenever the tracker initializes on a page.
+  recordPageViewWithRetry();
 
   document.addEventListener('click', onDocumentClick, true);
 })();

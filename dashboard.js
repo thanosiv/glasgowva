@@ -26,8 +26,12 @@ const userManagementState = {
 
 const analyticsDashboardState = {
   records: [],
+  selectedKind: 'all',
   selectedFilter: 'all',
+  isLoading: false,
 };
+
+let analyticsChartResizeFrame = 0;
 
 const HEADER_INCLUDE_FALLBACK = `
 <section id="site-dev-notification" class="site-dev-notification hidden" aria-live="polite" role="status">
@@ -270,6 +274,33 @@ function getAnalyticsFilterSelect() {
   return document.getElementById('analytics-filter-select');
 }
 
+function updateAnalyticsRefreshStatus(message, type = 'info') {
+  const status = document.getElementById('analytics-refresh-status');
+  if (!status) return;
+  status.textContent = String(message || '');
+  status.className = message ? `status-text status-${type}` : 'status-text';
+}
+
+function setAnalyticsLoadingState(isLoading) {
+  analyticsDashboardState.isLoading = Boolean(isLoading);
+
+  const refreshButton = document.getElementById('analytics-refresh-button');
+  if (refreshButton) {
+    refreshButton.disabled = analyticsDashboardState.isLoading;
+    refreshButton.textContent = analyticsDashboardState.isLoading ? 'Refreshing…' : 'Refresh';
+  }
+}
+
+function getAnalyticsRecordsByKind(records, selectedKind = 'all') {
+  const normalizedKind = String(selectedKind || 'all').trim().toLowerCase();
+  const source = Array.isArray(records) ? records : [];
+  if (normalizedKind === 'all') {
+    return source;
+  }
+
+  return source.filter((record) => String(record?.kind || '').trim().toLowerCase() === normalizedKind);
+}
+
 function getLocalDateKey(dateValue) {
   const parsed = new Date(dateValue);
   if (Number.isNaN(parsed.getTime())) return null;
@@ -346,7 +377,7 @@ async function loadAnalyticsRecords() {
         if (!parsed || typeof parsed !== 'object') continue;
         const timestamp = String(parsed.timestamp || '').trim();
         const kind = String(parsed.kind || '').trim().toLowerCase();
-        if (!timestamp || (kind !== 'document' && kind !== 'video')) continue;
+        if (!timestamp || (kind !== 'document' && kind !== 'video' && kind !== 'page')) continue;
 
         records.push({
           kind,
@@ -368,6 +399,17 @@ function normalizeAnalyticsFilterValue(kind, href, label) {
   const normalizedKind = String(kind || '').trim().toLowerCase();
   const normalizedLabel = String(label || '').trim();
   const decodedHref = String(href || '').trim();
+
+  if (normalizedKind === 'page') {
+    if (normalizedLabel) return normalizedLabel;
+    if (!decodedHref) return 'Unknown page';
+    try {
+      const parsedUrl = new URL(decodedHref, window.location.href);
+      return parsedUrl.pathname || decodedHref;
+    } catch {
+      return decodedHref;
+    }
+  }
 
   if (!decodedHref) {
     return normalizedLabel || 'Untitled item';
@@ -410,11 +452,13 @@ function normalizeAnalyticsFilterValue(kind, href, label) {
   return normalizedLabel || '';
 }
 
-function getAnalyticsFilterOptions(records) {
+function getAnalyticsFilterOptions(records, selectedKind = 'all') {
   const seen = new Set();
   const options = [];
 
-  for (const record of Array.isArray(records) ? records : []) {
+  const filteredRecords = getAnalyticsRecordsByKind(records, selectedKind);
+
+  for (const record of filteredRecords) {
     const value = normalizeAnalyticsFilterValue(record?.kind, record?.href, record?.label);
     if (!value || seen.has(value)) continue;
     seen.add(value);
@@ -424,10 +468,11 @@ function getAnalyticsFilterOptions(records) {
   return options.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function buildAnalyticsDailyCounts(records, selectedFilter = 'all') {
+function buildAnalyticsDailyCounts(records, selectedFilter = 'all', selectedKind = 'all') {
   const countsByDate = new Map();
+  const filteredRecords = getAnalyticsRecordsByKind(records, selectedKind);
 
-  for (const record of Array.isArray(records) ? records : []) {
+  for (const record of filteredRecords) {
     const value = normalizeAnalyticsFilterValue(record?.kind, record?.href, record?.label);
     if (selectedFilter !== 'all' && value !== selectedFilter) continue;
 
@@ -446,7 +491,7 @@ function updateAnalyticsFilterOptions() {
   const select = getAnalyticsFilterSelect();
   if (!select) return;
 
-  const options = getAnalyticsFilterOptions(analyticsDashboardState.records);
+  const options = getAnalyticsFilterOptions(analyticsDashboardState.records, analyticsDashboardState.selectedKind);
   const currentValue = options.some((option) => option.value === analyticsDashboardState.selectedFilter)
     ? analyticsDashboardState.selectedFilter
     : 'all';
@@ -469,7 +514,11 @@ function renderAnalyticsChart() {
   const emptyMessage = document.getElementById('analytics-chart-empty');
   if (!svg) return;
 
-  const counts = buildAnalyticsDailyCounts(analyticsDashboardState.records, analyticsDashboardState.selectedFilter);
+  const counts = buildAnalyticsDailyCounts(
+    analyticsDashboardState.records,
+    analyticsDashboardState.selectedFilter,
+    analyticsDashboardState.selectedKind
+  );
 
   if (!counts.length) {
     svg.innerHTML = '';
@@ -479,12 +528,17 @@ function renderAnalyticsChart() {
 
   emptyMessage?.classList.add('hidden');
 
-  const width = 760;
-  const height = 260;
-  const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+  const width = Math.max(Math.floor(svg.clientWidth || 760), 320);
+  const isNarrow = width < 560;
+  const height = isNarrow ? 320 : 260;
+  const margin = isNarrow
+    ? { top: 24, right: 16, bottom: 52, left: 30 }
+    : { top: 20, right: 20, bottom: 40, left: 40 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
   const maxValue = Math.max(...counts.map((entry) => entry.count), 1);
+
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
   const points = counts.map((entry, index) => {
     const x = margin.left + (counts.length === 1 ? chartWidth / 2 : (index / (counts.length - 1)) * chartWidth);
@@ -500,9 +554,20 @@ function renderAnalyticsChart() {
     return `<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="rgba(15,65,92,0.15)" stroke-width="1" />`;
   }).join('');
 
-  const dateLabels = points.map((point) => `<text x="${point.x}" y="${height - 14}" text-anchor="middle" font-size="10" fill="#5b6471">${formatAnalyticsDate(point.date)}</text>`).join('');
-  const valueLabels = points.map((point) => `<text x="${point.x}" y="${point.y - 12}" text-anchor="middle" font-size="10" fill="#0f415c" font-weight="700">${point.count}</text>`).join('');
-  const markers = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="4" fill="#0f415c" stroke="#ffffff" stroke-width="2" />`).join('');
+  const dateFontSize = isNarrow ? 12 : 10;
+  const valueFontSize = isNarrow ? 12 : 10;
+  const markerRadius = isNarrow ? 5 : 4;
+  const markerStrokeWidth = isNarrow ? 2.5 : 2;
+  const dateLabelY = isNarrow ? height - 12 : height - 14;
+  const valueLabelOffset = isNarrow ? 14 : 12;
+
+  const dateLabels = points.map((point, index) => {
+    const shouldRender = !isNarrow || points.length <= 5 || index === 0 || index === points.length - 1 || index % 2 === 0;
+    if (!shouldRender) return '';
+    return `<text x="${point.x}" y="${dateLabelY}" text-anchor="middle" font-size="${dateFontSize}" fill="#5b6471">${formatAnalyticsDate(point.date)}</text>`;
+  }).join('');
+  const valueLabels = points.map((point) => `<text x="${point.x}" y="${point.y - valueLabelOffset}" text-anchor="middle" font-size="${valueFontSize}" fill="#0f415c" font-weight="700">${point.count}</text>`).join('');
+  const markers = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="${markerRadius}" fill="#0f415c" stroke="#ffffff" stroke-width="${markerStrokeWidth}" />`).join('');
 
   svg.innerHTML = `
     <g>
@@ -516,16 +581,46 @@ function renderAnalyticsChart() {
   `;
 }
 
+function scheduleAnalyticsChartResize() {
+  if (analyticsChartResizeFrame) {
+    cancelAnimationFrame(analyticsChartResizeFrame);
+  }
+
+  analyticsChartResizeFrame = requestAnimationFrame(() => {
+    analyticsChartResizeFrame = 0;
+    const panel = document.getElementById('analytics-panel');
+    if (!panel || panel.classList.contains('hidden')) return;
+    renderAnalyticsChart();
+  });
+}
+
 async function loadAnalyticsDashboard() {
   const select = getAnalyticsFilterSelect();
   if (!select) return;
 
+  setAnalyticsLoadingState(true);
+  updateAnalyticsRefreshStatus('Refreshing analytics data…', 'info');
+
+  const previousKind = analyticsDashboardState.selectedKind || 'all';
+  const previousFilter = analyticsDashboardState.selectedFilter || 'all';
+
   try {
     analyticsDashboardState.records = await loadAnalyticsRecords();
-    updateAnalyticsFilterOptions();
-    renderAnalyticsChart();
+    analyticsDashboardState.selectedKind = previousKind;
+    setAnalyticsKind(previousKind);
+
+    const filterOptions = getAnalyticsFilterOptions(analyticsDashboardState.records, analyticsDashboardState.selectedKind);
+    if (previousFilter === 'all' || !filterOptions.some((option) => option.value === previousFilter)) {
+      updateAnalyticsRefreshStatus('Analytics data refreshed.', 'success');
+    } else {
+      analyticsDashboardState.selectedFilter = previousFilter;
+      updateAnalyticsFilterOptions();
+      renderAnalyticsChart();
+      updateAnalyticsRefreshStatus('Analytics data refreshed.', 'success');
+    }
   } catch (error) {
     console.error(error);
+    updateAnalyticsRefreshStatus('Unable to refresh analytics data.', 'error');
     const emptyMessage = document.getElementById('analytics-chart-empty');
     if (emptyMessage) {
       emptyMessage.textContent = 'Unable to load analytics data at this time.';
@@ -533,7 +628,26 @@ async function loadAnalyticsDashboard() {
     }
     const svg = document.getElementById('analytics-chart');
     if (svg) svg.innerHTML = '';
+  } finally {
+    setAnalyticsLoadingState(false);
   }
+}
+
+function setAnalyticsKind(kind) {
+  const normalizedKind = String(kind || 'all').trim().toLowerCase();
+  const allowedKinds = new Set(['all', 'page', 'document', 'video']);
+  analyticsDashboardState.selectedKind = allowedKinds.has(normalizedKind) ? normalizedKind : 'all';
+  analyticsDashboardState.selectedFilter = 'all';
+
+  document.querySelectorAll('.analytics-kind-button').forEach((button) => {
+    const buttonKind = String(button.dataset.analyticsKind || 'all').trim().toLowerCase();
+    const isActive = buttonKind === analyticsDashboardState.selectedKind;
+    button.classList.toggle('active-kind', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
+
+  updateAnalyticsFilterOptions();
+  renderAnalyticsChart();
 }
 
 function getServiceRequestsEndpoint() {
@@ -803,11 +917,34 @@ function selectTab(tabId) {
     return;
   }
 
-  const tabs = document.querySelectorAll('.tab-button');
+  const tabs = document.querySelectorAll('.dashboard-tool-tab');
   const panels = document.querySelectorAll('.tab-panel');
+  const groupButtons = document.querySelectorAll('.dashboard-group-button');
+  const groupSelect = document.getElementById('dashboard-group-select');
+  const targetTab = document.getElementById(tabId);
+  const selectedGroup = String(targetTab?.dataset?.group || 'publish').trim();
+
+  if (groupSelect) {
+    groupSelect.value = selectedGroup;
+  }
+
+  groupButtons.forEach((button) => {
+    const isActive = button.dataset.group === selectedGroup;
+    button.classList.toggle('active-group', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
 
   tabs.forEach((button) => {
     const selected = button.id === tabId;
+    const isInActiveGroup = button.dataset.group === selectedGroup;
+    button.classList.toggle('is-visible', isInActiveGroup);
+    button.setAttribute('tabindex', isInActiveGroup ? '0' : '-1');
+    if (!isInActiveGroup) {
+      button.setAttribute('aria-selected', 'false');
+      button.classList.remove('active-tab');
+      return;
+    }
+
     button.setAttribute('aria-selected', String(selected));
     if (selected) {
       button.classList.add('active-tab');
@@ -819,6 +956,18 @@ function selectTab(tabId) {
   panels.forEach((panel) => {
     panel.classList.toggle('hidden', panel.id !== `${tabId.replace('-tab', '')}-panel`);
   });
+
+  if (tabId === 'analytics-tab') {
+    // Render after layout settles so width is measured from a visible panel.
+    scheduleAnalyticsChartResize();
+  }
+}
+
+function selectDashboardGroup(groupId) {
+  const tools = Array.from(document.querySelectorAll('.dashboard-tool-tab'));
+  const targetTool = tools.find((button) => button.dataset.group === groupId && !button.classList.contains('hidden'));
+  if (!targetTool) return;
+  selectTab(targetTool.id);
 }
 
 async function populatePrefixSelect() {
@@ -1326,14 +1475,43 @@ function attachDashboardEvents() {
     closeServiceRequestDetailsModal();
   });
 
-  document.querySelectorAll('.tab-button').forEach((button) => {
+  document.querySelectorAll('.dashboard-tool-tab').forEach((button) => {
     button.addEventListener('click', () => selectTab(button.id));
+  });
+
+  document.querySelectorAll('.dashboard-group-button').forEach((button) => {
+    button.addEventListener('click', () => {
+      const group = String(button.dataset.group || '').trim();
+      if (!group) return;
+      selectDashboardGroup(group);
+    });
+  });
+
+  const groupSelect = document.getElementById('dashboard-group-select');
+  groupSelect?.addEventListener('change', () => {
+    const group = String(groupSelect.value || '').trim();
+    if (!group) return;
+    selectDashboardGroup(group);
   });
 
   const analyticsFilterSelect = getAnalyticsFilterSelect();
   analyticsFilterSelect?.addEventListener('change', (event) => {
     analyticsDashboardState.selectedFilter = event.target.value || 'all';
     renderAnalyticsChart();
+  });
+
+  window.addEventListener('resize', scheduleAnalyticsChartResize);
+  window.addEventListener('orientationchange', scheduleAnalyticsChartResize);
+
+  const analyticsRefreshButton = document.getElementById('analytics-refresh-button');
+  analyticsRefreshButton?.addEventListener('click', async () => {
+    await loadAnalyticsDashboard();
+  });
+
+  document.querySelectorAll('.analytics-kind-button').forEach((button) => {
+    button.addEventListener('click', () => {
+      setAnalyticsKind(button.dataset.analyticsKind || 'all');
+    });
   });
 
   if (uploadForm) {
@@ -2560,13 +2738,16 @@ function renderManagerMinutesList() {
 
   container.innerHTML = pageEntries.map((entry) => {
     const displayState = getManagerMinuteDisplayState(entry);
+    const goLiveMeta = displayState === 'Live'
+      ? ''
+      : `<p class="public-notice-row-meta">Go live: ${escapeHtml(formatNoticeDateTime(entry.liveAt))}</p>`;
     return `
       <article class="card manager-minute-row">
         <div class="manager-minute-row-header">
           <h3>${escapeHtml(entry.title)}</h3>
           <span class="public-notice-pill public-notice-pill-${displayState.toLowerCase()}">${escapeHtml(displayState)}</span>
         </div>
-        <p class="public-notice-row-meta">Go live: ${escapeHtml(formatNoticeDateTime(entry.liveAt))} · Links: ${entry.links.length} · Images: ${entry.images.length}</p>
+        ${goLiveMeta}
         <p>${escapeHtml(toOverviewTextFromContent(entry.content || entry.summary))}</p>
         <div class="form-actions">
           <button type="button" class="button" data-manager-minute-edit-id="${escapeHtml(entry.id)}">Edit minute</button>
