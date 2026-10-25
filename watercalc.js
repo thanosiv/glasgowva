@@ -41,10 +41,27 @@ function sanitizeDecimalInput(rawValue) {
   return `${parts[0]}.${parts.slice(1).join("")}`;
 }
 
+function getUsageFromGlasgowBill(monthlyBillAmount) {
+  const baseTotal = GLASGOW_RATES.WATER_BASE_FEE + GLASGOW_RATES.SEWER_BASE_FEE;
+  const combinedOveragePerK = GLASGOW_RATES.WATER_OVERAGE_PER_K + GLASGOW_RATES.SEWER_OVERAGE_PER_K;
+
+  if (monthlyBillAmount < baseTotal) {
+    return null;
+  }
+
+  if (monthlyBillAmount === baseTotal) {
+    return GLASGOW_RATES.BASE_ALLOWANCE_K_GAL;
+  }
+
+  const overageKGal = (monthlyBillAmount - baseTotal) / combinedOveragePerK;
+  return GLASGOW_RATES.BASE_ALLOWANCE_K_GAL + overageKGal;
+}
+
 // --- MAIN EVENT LISTENER ---
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("water-calc-form");
   const valueInput = document.getElementById("water-calc-input");
+  const billInput = document.getElementById("water-calc-bill-input");
   const status = document.getElementById("water-calc-status");
   const output = document.getElementById("water-calc-output");
 
@@ -60,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const sewerTotalEl = document.getElementById("sewer-total");
   const grandTotalEl = document.getElementById("grand-total");
 
-  if (!form || !valueInput || !status || !output) {
+  if (!form || !valueInput || !billInput || !status || !output) {
     return;
   }
 
@@ -71,18 +88,49 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  billInput.addEventListener("input", () => {
+    const sanitized = sanitizeDecimalInput(billInput.value);
+    if (billInput.value !== sanitized) {
+      billInput.value = sanitized;
+    }
+  });
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
 
-    const sanitized = sanitizeDecimalInput(valueInput.value);
-    const valueEntered = Number.parseFloat(sanitized);
+    const usageSanitized = sanitizeDecimalInput(valueInput.value);
+    const billSanitized = sanitizeDecimalInput(billInput.value);
 
-    if (!sanitized || Number.isNaN(valueEntered)) {
-      status.textContent = "Please enter a numeric decimal value.";
+    const usageEntered = Number.parseFloat(usageSanitized);
+    const billEntered = Number.parseFloat(billSanitized);
+    const hasUsage = usageSanitized && !Number.isNaN(usageEntered);
+    const hasBill = billSanitized && !Number.isNaN(billEntered);
+    let valueEntered = usageEntered;
+
+    if (!hasUsage && !hasBill) {
+      status.textContent = "Enter either usage (in thousand gallons) or your Glasgow monthly bill amount.";
       status.className = "status-text status-error";
       valueInput.setAttribute("aria-invalid", "true");
+      billInput.setAttribute("aria-invalid", "true");
       output.classList.add("hidden");
       return;
+    }
+
+    if (hasUsage) {
+      valueEntered = usageEntered;
+      billInput.setAttribute("aria-invalid", "false");
+    } else {
+      valueEntered = getUsageFromGlasgowBill(billEntered);
+      if (valueEntered === null) {
+        const baseTotal = GLASGOW_RATES.WATER_BASE_FEE + GLASGOW_RATES.SEWER_BASE_FEE;
+        status.textContent = `Glasgow monthly bill must be at least $${formatCurrency(baseTotal)} based on current published base rates.`;
+        status.className = "status-text status-error";
+        valueInput.setAttribute("aria-invalid", "true");
+        billInput.setAttribute("aria-invalid", "true");
+        output.classList.add("hidden");
+        return;
+      }
+      valueInput.setAttribute("aria-invalid", "false");
     }
 
     if (valueEntered >= 100) {
@@ -91,11 +139,13 @@ document.addEventListener("DOMContentLoaded", () => {
       status.textContent = `Please enter usage in thousand gallons. Example: ${thousandGallonsExample} for ${gallonsText} gallons.`;
       status.className = "status-text status-error";
       valueInput.setAttribute("aria-invalid", "true");
+      billInput.setAttribute("aria-invalid", "false");
       output.classList.add("hidden");
       return;
     }
 
     valueInput.setAttribute("aria-invalid", "false");
+    billInput.setAttribute("aria-invalid", "false");
 
     // --- Glasgow VA Calculations ---
     const overage = Math.max(0, valueEntered - GLASGOW_RATES.BASE_ALLOWANCE_K_GAL);
@@ -123,7 +173,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (sewerTotalEl) sewerTotalEl.textContent = `Sewer Total = $${formatCurrency(sewerTotal)}`;
     if (grandTotalEl) grandTotalEl.textContent = `Grand Total = $${formatCurrency(psaGrandTotal)}`;
 
-    status.textContent = "Calculation complete.";
+    if (hasUsage) {
+      status.textContent = "Calculation complete.";
+    } else {
+      status.textContent = `Calculation complete. Estimated usage from Glasgow bill: ${valueEntered.toFixed(2)} thousand gallons.`;
+    }
     status.className = "status-text status-success";
     output.classList.remove("hidden");
   });

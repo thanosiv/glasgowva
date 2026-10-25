@@ -21,7 +21,7 @@
           <div class="section-header">
             <p class="eyebrow">Utilities</p>
             <h1>Water and Sewer Calculator</h1>
-            <p>Enter your current usage value to estimate monthly charges for Town of Glasgow and Rockbridge County PSA.</p>
+            <p>Enter either your current usage value or your current monthly Glasgow bill amount to estimate monthly charges for Town of Glasgow and Rockbridge County PSA.</p>
           </div>
 
           <article class="card">
@@ -65,7 +65,18 @@
                   step="any"
                   min="0"
                   placeholder="Enter a decimal value"
-                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="water-calc-bill-input">Or Enter Current Glasgow Monthly Bill Amount (Water + Sewer)</label>
+                <input
+                  id="water-calc-bill-input"
+                  name="water-calc-bill-input"
+                  type="number"
+                  inputmode="decimal"
+                  step="any"
+                  min="0"
+                  placeholder="Enter dollar amount (example: 96.40)"
                 />
               </div>
               <div class="form-actions">
