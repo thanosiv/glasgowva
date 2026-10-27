@@ -249,7 +249,16 @@ function getOverviewText(value, maxLength = 180) {
 }
 
 function renderSimpleMarkdown(value) {
-  const text = String(value || '').trim();
+  const normalizeProgrammaticNewlines = (input) => String(input || '')
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n');
+
+  const sanitizeMarkdownLine = (line) => String(line || '')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ');
+
+  const text = sanitizeMarkdownLine(normalizeProgrammaticNewlines(value)).trim();
   if (!text) return '<p>No description provided.</p>';
 
   const renderInline = (input) => {
@@ -284,6 +293,14 @@ function renderSimpleMarkdown(value) {
   const chunks = [];
   let paragraphLines = [];
   let listItems = [];
+  let pendingBlankLines = 0;
+
+  const flushPendingBlankSpacing = () => {
+    if (pendingBlankLines > 1 && chunks.length) {
+      chunks.push('<br>'.repeat(pendingBlankLines - 1));
+    }
+    pendingBlankLines = 0;
+  };
 
   const flushParagraph = () => {
     if (!paragraphLines.length) return;
@@ -300,13 +317,16 @@ function renderSimpleMarkdown(value) {
   };
 
   lines.forEach((rawLine) => {
-    const line = rawLine.trim();
+    const line = sanitizeMarkdownLine(rawLine).trim();
 
     if (!line) {
       flushParagraph();
       flushList();
+      pendingBlankLines += 1;
       return;
     }
+
+    flushPendingBlankSpacing();
 
     const headingMatch = line.match(/^(#{1,6})\s*(.+)$/);
     if (headingMatch && headingMatch[2]?.trim()) {
@@ -317,7 +337,15 @@ function renderSimpleMarkdown(value) {
       return;
     }
 
-    const listMatch = line.match(/^[-*]\s+(.+)$/);
+    const decoratedHeadingMatch = line.match(/^(?:\*\*|__)?\+\+\s*(.+?)\s*\+\+(?:\*\*|__)?$/);
+    if (decoratedHeadingMatch && decoratedHeadingMatch[1]?.trim()) {
+      flushParagraph();
+      flushList();
+      chunks.push(`<h3>${renderInline(decoratedHeadingMatch[1].trim())}</h3>`);
+      return;
+    }
+
+    const listMatch = line.match(/^[-*•]\s+(.+)$/);
     if (listMatch) {
       flushParagraph();
       listItems.push(listMatch[1].trim());
