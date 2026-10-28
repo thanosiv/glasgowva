@@ -374,6 +374,7 @@ function applyAnalyticsDatePreset(preset, options = {}) {
   if (normalizedPreset === 'custom') {
     setAnalyticsRangePresetSelection('custom');
     if (shouldRender) {
+      updateAnalyticsFilterOptions();
       renderAnalyticsChart();
     }
     return;
@@ -397,6 +398,7 @@ function applyAnalyticsDatePreset(preset, options = {}) {
   setAnalyticsRangePresetSelection(normalizedPreset);
 
   if (shouldRender) {
+    updateAnalyticsFilterOptions();
     renderAnalyticsChart();
   }
 }
@@ -700,11 +702,17 @@ function normalizeAnalyticsFilterValue(kind, href, label) {
   return normalizedLabel || '';
 }
 
-function getAnalyticsFilterOptions(records, selectedKind = 'all') {
+function getAnalyticsFilterOptions(records, selectedKind = 'all', rangeStart = '', rangeEnd = '') {
   const seen = new Set();
   const options = [];
 
-  const filteredRecords = getAnalyticsRecordsByKind(records, selectedKind);
+  const filteredRecords = getAnalyticsRecordsByKind(records, selectedKind).filter((record) => {
+    const dateKey = getLocalDateKey(record?.timestamp || '');
+    if (!dateKey) return false;
+    if (rangeStart && dateKey < rangeStart) return false;
+    if (rangeEnd && dateKey > rangeEnd) return false;
+    return true;
+  });
 
   for (const record of filteredRecords) {
     const value = normalizeAnalyticsFilterValue(record?.kind, record?.href, record?.label);
@@ -762,6 +770,7 @@ function applySelectedAnalyticsDateRange() {
 
   applyAnalyticsDateRange(dateFromInput.value, dateToInput.value);
   setAnalyticsRangePresetSelection('custom');
+  updateAnalyticsFilterOptions();
   renderAnalyticsChart();
 }
 
@@ -769,7 +778,12 @@ function updateAnalyticsFilterOptions() {
   const select = getAnalyticsFilterSelect();
   if (!select) return;
 
-  const options = getAnalyticsFilterOptions(analyticsDashboardState.records, analyticsDashboardState.selectedKind);
+  const options = getAnalyticsFilterOptions(
+    analyticsDashboardState.records,
+    analyticsDashboardState.selectedKind,
+    analyticsDashboardState.rangeStart,
+    analyticsDashboardState.rangeEnd
+  );
   const currentValue = options.some((option) => option.value === analyticsDashboardState.selectedFilter)
     ? analyticsDashboardState.selectedFilter
     : 'all';
