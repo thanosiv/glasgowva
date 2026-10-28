@@ -570,6 +570,65 @@ async function loadAnalyticsRecords() {
 }
 
 function normalizeAnalyticsFilterValue(kind, href, label) {
+  function decodeRepeatedly(value) {
+    let text = String(value ?? '').trim();
+    let previous = '';
+
+    for (let i = 0; i < 5; i += 1) {
+      try {
+        const next = decodeURIComponent(text);
+        if (next === text || next === previous) {
+          return next;
+        }
+        previous = text;
+        text = next;
+      } catch {
+        return text;
+      }
+    }
+
+    return text;
+  }
+
+  function formatMeetingTitleAndDate(title, date) {
+    const cleanedTitle = decodeRepeatedly(String(title || '').trim())
+      .replace(/\+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const cleanedDate = String(date || '').trim();
+
+    if (!cleanedTitle) return '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanedDate)) return cleanedTitle;
+    return `${cleanedTitle} ${cleanedDate}`;
+  }
+
+  function getYouTubeDisplayName(urlText) {
+    try {
+      const parsed = new URL(urlText, window.location.href);
+      const host = String(parsed.hostname || '').toLowerCase();
+      const path = String(parsed.pathname || '').replace(/^\/+/, '');
+
+      if (!host.includes('youtube.com') && !host.includes('youtube-nocookie.com') && !host.includes('youtu.be')) {
+        return '';
+      }
+
+      if (host.includes('youtu.be')) {
+        const [videoId] = path.split('/');
+        return videoId ? `YouTube ${videoId}` : 'YouTube video';
+      }
+
+      const watchId = String(parsed.searchParams.get('v') || '').trim();
+      if (watchId) return `YouTube ${watchId}`;
+
+      const pathMatch = path.match(/^(?:live|embed|shorts)\/([\w-]{6,})/i);
+      if (pathMatch && pathMatch[1]) return `YouTube ${pathMatch[1]}`;
+
+      return 'YouTube video';
+    } catch {
+      return '';
+    }
+  }
+
   const normalizedKind = String(kind || '').trim().toLowerCase();
   const normalizedLabel = String(label || '').trim();
   const decodedHref = String(href || '').trim();
@@ -591,7 +650,22 @@ function normalizeAnalyticsFilterValue(kind, href, label) {
 
   try {
     const parsedUrl = new URL(decodedHref, window.location.href);
+
+    const titleFromViewer = formatMeetingTitleAndDate(
+      parsedUrl.searchParams.get('title'),
+      parsedUrl.searchParams.get('date')
+    );
+    if (titleFromViewer) {
+      return titleFromViewer;
+    }
+
     const sourceValue = parsedUrl.searchParams.get('src') || parsedUrl.pathname;
+
+    const youtubeName = getYouTubeDisplayName(sourceValue);
+    if (youtubeName) {
+      return youtubeName;
+    }
+
     const rawName = String(sourceValue || '')
       .split('?')[0]
       .split('#')[0]
@@ -600,7 +674,7 @@ function normalizeAnalyticsFilterValue(kind, href, label) {
       .pop() || '';
 
     if (rawName) {
-      const normalizedFileName = decodeURIComponent(rawName)
+      const normalizedFileName = decodeRepeatedly(rawName)
         .replace(/\.[^/.]+$/, '')
         .replace(/\+/g, ' ')
         .replace(/%20/g, ' ')
@@ -1906,7 +1980,15 @@ function attachDashboardEvents() {
       const end = document.getElementById('event-end')?.value;
       const location = document.getElementById('event-location')?.value.trim();
       const description = document.getElementById('event-description')?.value.trim();
-      const normalizedEventPayload = applyEventCancelStatus(title, description, cancelStatus);
+      const videoUrlInput = document.getElementById('event-video-url')?.value || '';
+      const videoUrl = normalizeEventVideoUrl(videoUrlInput);
+      if (String(videoUrlInput).trim() && !videoUrl) {
+        updateEventStatus('Video URL must be a valid http(s) link.', 'error');
+        return;
+      }
+
+      const descriptionWithVideo = buildEventDescriptionWithVideo(description, videoUrl);
+      const normalizedEventPayload = applyEventCancelStatus(title, descriptionWithVideo, cancelStatus);
 
       if (!normalizedEventPayload.title || !date || !start) {
         updateEventStatus('Title, date, and start time are required.', 'error');
@@ -2084,6 +2166,45 @@ function stripCancelledStatusLine(value) {
   return lines.join('\n').trim();
 }
 
+function extractEventVideoUrl(text) {
+  const explicitPattern = /(?:^|\n)\s*(?:video|recording|watch)\s*:\s*(https?:\/\/\S+)/i;
+  const explicitMatch = String(text || '').match(explicitPattern);
+  if (explicitMatch && explicitMatch[1]) {
+    return explicitMatch[1].trim();
+  }
+  return '';
+}
+
+function stripEventVideoLine(text) {
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => !/^\s*(?:video|recording|watch)\s*:\s*https?:\/\/\S+\s*$/i.test(line));
+
+  return lines.join('\n').trim();
+}
+
+function normalizeEventVideoUrl(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  try {
+    const parsed = new URL(text);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return '';
+    }
+    return parsed.href;
+  } catch {
+    return '';
+  }
+}
+
+function buildEventDescriptionWithVideo(description, videoUrl) {
+  const baseDescription = stripEventVideoLine(description);
+  if (!videoUrl) return baseDescription;
+  return baseDescription ? `${baseDescription}\nVideo: ${videoUrl}` : `Video: ${videoUrl}`;
+}
+
 function resolveEventCancelStatus(eventRecord) {
   const title = String(eventRecord?.summary || eventRecord?.title || '').trim();
   const description = String(eventRecord?.description || '').trim();
@@ -2158,9 +2279,10 @@ function openEventModal(mode, eventRecord = null) {
   const eventEnd = document.getElementById('event-end');
   const eventLocation = document.getElementById('event-location');
   const eventDescription = document.getElementById('event-description');
+  const eventVideoUrl = document.getElementById('event-video-url');
   const eventDateFrom = document.getElementById('event-date-from');
 
-  if (!modal || !title || !eventForm || !eventId || !eventTitle || !eventDate || !eventType || !eventCancelStatus || !eventStart || !eventEnd || !eventLocation || !eventDescription) {
+  if (!modal || !title || !eventForm || !eventId || !eventTitle || !eventDate || !eventType || !eventCancelStatus || !eventStart || !eventEnd || !eventLocation || !eventDescription || !eventVideoUrl) {
     return;
   }
 
@@ -2171,6 +2293,7 @@ function openEventModal(mode, eventRecord = null) {
     const resolvedStatus = resolveEventCancelStatus(eventRecord);
     const cleanedTitle = stripCancelledTitlePrefix(eventRecord.summary || '');
     const cleanedDescription = stripCancelledStatusLine(eventRecord.description || '');
+    const extractedVideoUrl = extractEventVideoUrl(eventRecord.description || '');
     title.textContent = 'Edit event';
     eventId.value = String(eventRecord.id || '');
     eventTitle.value = String(cleanedTitle || '');
@@ -2180,7 +2303,8 @@ function openEventModal(mode, eventRecord = null) {
     eventStart.value = dateParts.start;
     eventEnd.value = endParts.start;
     eventLocation.value = String(eventRecord.location || '');
-    eventDescription.value = String(cleanedDescription || '');
+    eventDescription.value = stripEventVideoLine(String(cleanedDescription || ''));
+    eventVideoUrl.value = extractedVideoUrl;
   } else {
     title.textContent = 'Create event';
     eventForm.reset();
@@ -2192,6 +2316,7 @@ function openEventModal(mode, eventRecord = null) {
     eventEnd.value = '';
     eventLocation.value = '';
     eventDescription.value = '';
+    eventVideoUrl.value = '';
   }
 
   modal.classList.remove('hidden');

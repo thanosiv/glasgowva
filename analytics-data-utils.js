@@ -19,6 +19,49 @@
     return String(value || '').replace(/\.[^./]+$/, '');
   }
 
+  function formatMeetingTitleAndDate(title, date) {
+    const cleanedTitle = decodeRepeatedly(String(title || '').trim())
+      .replace(/\+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const cleanedDate = String(date || '').trim();
+    if (!cleanedTitle) return '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanedDate)) return cleanedTitle;
+    return `${cleanedTitle} ${cleanedDate}`;
+  }
+
+  function getYouTubeDisplayName(urlText) {
+    try {
+      const parsed = new URL(urlText, 'https://example.com');
+      const host = String(parsed.hostname || '').toLowerCase();
+      const path = String(parsed.pathname || '').replace(/^\/+/, '');
+
+      if (!host.includes('youtube.com') && !host.includes('youtube-nocookie.com') && !host.includes('youtu.be')) {
+        return '';
+      }
+
+      if (host.includes('youtu.be')) {
+        const [videoId] = path.split('/');
+        return videoId ? `YouTube ${videoId}` : 'YouTube video';
+      }
+
+      const watchId = String(parsed.searchParams.get('v') || '').trim();
+      if (watchId) {
+        return `YouTube ${watchId}`;
+      }
+
+      const match = path.match(/^(?:live|embed|shorts)\/([\w-]{6,})/i);
+      if (match && match[1]) {
+        return `YouTube ${match[1]}`;
+      }
+
+      return 'YouTube video';
+    } catch {
+      return '';
+    }
+  }
+
   function getVideoDisplayName(href) {
     if (!href) return '';
 
@@ -26,6 +69,15 @@
 
     try {
       const parsed = new URL(target, 'https://example.com');
+
+      const titleFromViewer = formatMeetingTitleAndDate(
+        parsed.searchParams.get('title'),
+        parsed.searchParams.get('date')
+      );
+      if (titleFromViewer) {
+        return titleFromViewer;
+      }
+
       const srcParam = parsed.searchParams.get('src');
       if (srcParam) {
         target = srcParam;
@@ -42,6 +94,11 @@
       .replace(/^\/+/, '')
       .split('/')
       .pop() || '';
+
+    const youtubeName = getYouTubeDisplayName(target);
+    if (youtubeName) {
+      return youtubeName;
+    }
 
     if (!cleaned) return '';
 

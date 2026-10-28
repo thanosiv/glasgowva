@@ -12,6 +12,8 @@ const records = [
 
 assert.equal(normalizeAnalyticsFilterValue('document', 'https://example.com/doc.pdf', 'Town Charter'), 'Town Charter');
 assert.equal(normalizeAnalyticsFilterValue('video', 'https://example.com/meeting-video.html?src=https%3A%2F%2Fstorage.googleapis.com%2Fglasgow-va%2Fmeetingvideos%2FTown%2520Hall%2520Meeting%25202026-10-13.mp4', ''), 'Town Hall Meeting 2026-10-13');
+assert.equal(normalizeAnalyticsFilterValue('video', 'https://example.com/meeting-video.html?src=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ', ''), 'YouTube dQw4w9WgXcQ');
+assert.equal(normalizeAnalyticsFilterValue('video', 'https://example.com/meeting-video.html?src=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ&title=Town%20Council%20Meeting&date=2026-10-28', ''), 'Town Council Meeting 2026-10-28');
 assert.equal(normalizeAnalyticsFilterValue('page', 'https://glasgowva.org/documents.html', 'Documents | Town of Glasgow'), 'Documents | Town of Glasgow');
 
 const dailyCounts = buildAnalyticsDailyCounts(records, 'all');

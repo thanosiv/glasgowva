@@ -167,10 +167,24 @@
       function parseYoutubeId(urlText) {
         try {
           const url = new URL(urlText);
-          if (url.hostname.includes("youtu.be")) {
-            return url.pathname.replace(/^\//, "") || null;
+          const host = String(url.hostname || "").toLowerCase();
+          const path = String(url.pathname || "").replace(/^\/+/, "");
+
+          if (host.includes("youtu.be")) {
+            const [id] = path.split("/");
+            return id || null;
           }
-          if (url.hostname.includes("youtube.com")) {
+
+          if (host.includes("youtube.com") || host.includes("youtube-nocookie.com")) {
+            if (path.startsWith("watch")) {
+              return url.searchParams.get("v") || null;
+            }
+
+            const pathMatch = path.match(/^(?:live|embed|shorts)\/([\w-]{6,})/i);
+            if (pathMatch && pathMatch[1]) {
+              return pathMatch[1];
+            }
+
             return url.searchParams.get("v") || null;
           }
         } catch {
