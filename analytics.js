@@ -1,4 +1,8 @@
 (function initAnalyticsTracker() {
+  const SESSION_STORAGE_KEY = 'analyticsSessionContextV1';
+  const VISITOR_STORAGE_KEY = 'analyticsVisitorFirstSeenAt';
+  const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
   const documentExtensions = new Set([
     'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'xls', 'xlsx', 'csv', 'ppt', 'pptx', 'zip'
   ]);
@@ -8,6 +12,143 @@
 
   function getAnalyticsEndpoint() {
     return String(window.siteConfig?.analyticsEndpoint || '').trim();
+  }
+
+  function parseJsonSafely(value) {
+    if (!value) return null;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  function createSessionId() {
+    if (window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+
+    if (window.crypto?.getRandomValues) {
+      const bytes = new Uint8Array(16);
+      window.crypto.getRandomValues(bytes);
+      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    return `sess-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function getCurrentPagePath() {
+    return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  }
+
+  function getUtmValues() {
+    try {
+      const params = new URL(window.location.href).searchParams;
+      return {
+        utmSource: String(params.get('utm_source') || '').trim(),
+        utmMedium: String(params.get('utm_medium') || '').trim(),
+        utmCampaign: String(params.get('utm_campaign') || '').trim(),
+        utmTerm: String(params.get('utm_term') || '').trim(),
+        utmContent: String(params.get('utm_content') || '').trim(),
+      };
+    } catch {
+      return {
+        utmSource: '',
+        utmMedium: '',
+        utmCampaign: '',
+        utmTerm: '',
+        utmContent: '',
+      };
+    }
+  }
+
+  function getSessionContext() {
+    const now = Date.now();
+    const landingPagePath = getCurrentPagePath();
+    const utmValues = getUtmValues();
+
+    let existing = null;
+    try {
+      existing = parseJsonSafely(window.sessionStorage.getItem(SESSION_STORAGE_KEY));
+    } catch {
+      existing = null;
+    }
+
+    const hasValidSession = existing
+      && typeof existing === 'object'
+      && typeof existing.id === 'string'
+      && existing.id.trim()
+      && Number.isFinite(existing.lastActivityAt)
+      && (now - existing.lastActivityAt) < SESSION_TIMEOUT_MS;
+
+    const nextSession = hasValidSession
+      ? {
+        ...existing,
+        lastActivityAt: now,
+      }
+      : {
+        id: createSessionId(),
+        startedAt: now,
+        lastActivityAt: now,
+        landingPagePath,
+        ...utmValues,
+      };
+
+    try {
+      window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+    } catch {
+      // Ignore storage failures in strict browser modes.
+    }
+
+    let isReturningVisitor = true;
+    try {
+      const firstSeenRaw = String(window.localStorage.getItem(VISITOR_STORAGE_KEY) || '').trim();
+      if (!firstSeenRaw) {
+        isReturningVisitor = false;
+        window.localStorage.setItem(VISITOR_STORAGE_KEY, String(now));
+      }
+    } catch {
+      isReturningVisitor = false;
+    }
+
+    return {
+      sessionId: String(nextSession.id || '').trim(),
+      isReturningVisitor,
+      landingPagePath: String(nextSession.landingPagePath || landingPagePath).trim(),
+      utmSource: String(nextSession.utmSource || '').trim(),
+      utmMedium: String(nextSession.utmMedium || '').trim(),
+      utmCampaign: String(nextSession.utmCampaign || '').trim(),
+      utmTerm: String(nextSession.utmTerm || '').trim(),
+      utmContent: String(nextSession.utmContent || '').trim(),
+    };
+  }
+
+  function detectDoNotTrack() {
+    const value = String(
+      navigator.doNotTrack
+      ?? window.doNotTrack
+      ?? navigator.msDoNotTrack
+      ?? ''
+    ).trim().toLowerCase();
+
+    return value === '1' || value === 'yes' || value === 'true';
+  }
+
+  function buildSharedPayloadFields() {
+    const pageUrl = window.location.href;
+    const pagePath = getCurrentPagePath();
+    const sessionContext = getSessionContext();
+
+    return {
+      pageUrl,
+      pagePath,
+      referrer: document.referrer || '',
+      timestamp: new Date().toISOString(),
+      language: String(navigator.language || '').trim(),
+      dntEnabled: detectDoNotTrack(),
+      gpcEnabled: navigator.globalPrivacyControl === true,
+      ...sessionContext,
+    };
   }
 
   function getFileExtension(href) {
@@ -44,32 +185,23 @@
   function buildPayload(anchor, kind) {
     const href = String(anchor.getAttribute('href') || '').trim();
     const label = String(anchor.dataset.analyticsLabel || anchor.textContent || '').trim();
-    const pageUrl = window.location.href;
-    const pagePath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
     return {
       kind,
       href,
       label,
-      pageUrl,
-      pagePath,
-      referrer: document.referrer || '',
-      timestamp: new Date().toISOString()
+      ...buildSharedPayloadFields()
     };
   }
 
   function buildPageViewPayload() {
     const pageUrl = window.location.href;
-    const pagePath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
     return {
       kind: 'page',
       href: pageUrl,
       label: String(document.title || '').trim(),
-      pageUrl,
-      pagePath,
-      referrer: document.referrer || '',
-      timestamp: new Date().toISOString()
+      ...buildSharedPayloadFields()
     };
   }
 
