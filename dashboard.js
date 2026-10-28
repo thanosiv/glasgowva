@@ -28,6 +28,9 @@ const analyticsDashboardState = {
   records: [],
   selectedKind: 'all',
   selectedFilter: 'all',
+  rangeStart: '',
+  rangeEnd: '',
+  rangePreset: 'last7',
   isLoading: false,
 };
 
@@ -274,6 +277,177 @@ function getAnalyticsFilterSelect() {
   return document.getElementById('analytics-filter-select');
 }
 
+function getAnalyticsDateFromInput() {
+  return document.getElementById('analytics-date-from');
+}
+
+function getAnalyticsDateToInput() {
+  return document.getElementById('analytics-date-to');
+}
+
+function getAnalyticsPresetSelect() {
+  return document.getElementById('analytics-range-preset-select');
+}
+
+function getAnalyticsPresetButtons() {
+  return Array.from(document.querySelectorAll('.analytics-range-preset-button'));
+}
+
+function toInputDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseInputDate(value) {
+  const text = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const [year, month, day] = text.split('-').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function getDefaultAnalyticsDateRange() {
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+
+  const start = new Date(end);
+  start.setDate(start.getDate() - 6);
+
+  return {
+    start: toInputDateString(start),
+    end: toInputDateString(end),
+  };
+}
+
+function getLastThirtyAnalyticsDateRange() {
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+
+  const start = new Date(end);
+  start.setDate(start.getDate() - 29);
+
+  return {
+    start: toInputDateString(start),
+    end: toInputDateString(end),
+  };
+}
+
+function getAnalyticsRecordDateBounds() {
+  let minDate = null;
+  let maxDate = null;
+
+  for (const record of Array.isArray(analyticsDashboardState.records) ? analyticsDashboardState.records : []) {
+    const key = getLocalDateKey(record?.timestamp || '');
+    if (!key) continue;
+    if (!minDate || key < minDate) minDate = key;
+    if (!maxDate || key > maxDate) maxDate = key;
+  }
+
+  return { minDate, maxDate };
+}
+
+function setAnalyticsRangePresetSelection(preset) {
+  const normalizedPreset = String(preset || '').trim().toLowerCase();
+  const allowedPresets = new Set(['last7', 'last30', 'all-time', 'custom']);
+  analyticsDashboardState.rangePreset = allowedPresets.has(normalizedPreset) ? normalizedPreset : 'custom';
+
+  const select = getAnalyticsPresetSelect();
+  if (select) {
+    select.value = analyticsDashboardState.rangePreset;
+  }
+
+  getAnalyticsPresetButtons().forEach((button) => {
+    const buttonPreset = String(button.dataset.analyticsRangePreset || '').trim().toLowerCase();
+    const isActive = buttonPreset === analyticsDashboardState.rangePreset;
+    button.classList.toggle('active-range-preset', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
+}
+
+function applyAnalyticsDatePreset(preset, options = {}) {
+  const normalizedPreset = String(preset || '').trim().toLowerCase();
+  const shouldRender = options.render !== false;
+
+  if (normalizedPreset === 'custom') {
+    setAnalyticsRangePresetSelection('custom');
+    if (shouldRender) {
+      renderAnalyticsChart();
+    }
+    return;
+  }
+
+  let nextRange;
+  if (normalizedPreset === 'last30') {
+    nextRange = getLastThirtyAnalyticsDateRange();
+  } else if (normalizedPreset === 'all-time') {
+    const bounds = getAnalyticsRecordDateBounds();
+    if (bounds.minDate && bounds.maxDate) {
+      nextRange = { start: bounds.minDate, end: bounds.maxDate };
+    } else {
+      nextRange = getDefaultAnalyticsDateRange();
+    }
+  } else {
+    nextRange = getDefaultAnalyticsDateRange();
+  }
+
+  applyAnalyticsDateRange(nextRange.start, nextRange.end);
+  setAnalyticsRangePresetSelection(normalizedPreset);
+
+  if (shouldRender) {
+    renderAnalyticsChart();
+  }
+}
+
+function normalizeAnalyticsDateRange(startValue, endValue) {
+  const fallback = getDefaultAnalyticsDateRange();
+  const fallbackStart = parseInputDate(fallback.start);
+  const fallbackEnd = parseInputDate(fallback.end);
+
+  let startDate = parseInputDate(startValue) || fallbackStart;
+  let endDate = parseInputDate(endValue) || fallbackEnd;
+
+  if (!startDate || !endDate) {
+    startDate = fallbackStart;
+    endDate = fallbackEnd;
+  }
+
+  if (startDate.getTime() > endDate.getTime()) {
+    const temp = startDate;
+    startDate = endDate;
+    endDate = temp;
+  }
+
+  return {
+    start: toInputDateString(startDate),
+    end: toInputDateString(endDate),
+  };
+}
+
+function applyAnalyticsDateRange(startValue, endValue) {
+  const normalized = normalizeAnalyticsDateRange(startValue, endValue);
+  analyticsDashboardState.rangeStart = normalized.start;
+  analyticsDashboardState.rangeEnd = normalized.end;
+
+  const dateFromInput = getAnalyticsDateFromInput();
+  const dateToInput = getAnalyticsDateToInput();
+  if (dateFromInput) dateFromInput.value = normalized.start;
+  if (dateToInput) dateToInput.value = normalized.end;
+}
+
+function initializeAnalyticsDateRange() {
+  const hasRange = analyticsDashboardState.rangeStart && analyticsDashboardState.rangeEnd;
+  if (!hasRange) {
+    applyAnalyticsDatePreset(analyticsDashboardState.rangePreset || 'last7', { render: false });
+    return;
+  }
+
+  applyAnalyticsDateRange(analyticsDashboardState.rangeStart, analyticsDashboardState.rangeEnd);
+  setAnalyticsRangePresetSelection(analyticsDashboardState.rangePreset || 'custom');
+}
+
 function updateAnalyticsRefreshStatus(message, type = 'info') {
   const status = document.getElementById('analytics-refresh-status');
   if (!status) return;
@@ -469,7 +643,24 @@ function getAnalyticsFilterOptions(records, selectedKind = 'all') {
 }
 
 function buildAnalyticsDailyCounts(records, selectedFilter = 'all', selectedKind = 'all') {
+  const normalizedRange = normalizeAnalyticsDateRange(analyticsDashboardState.rangeStart, analyticsDashboardState.rangeEnd);
+  const startDate = parseInputDate(normalizedRange.start);
+  const endDate = parseInputDate(normalizedRange.end);
+  if (!startDate || !endDate) {
+    return { counts: [], matchingEventCount: 0 };
+  }
+
+  const dateKeys = [];
   const countsByDate = new Map();
+  const cursor = new Date(startDate);
+  while (cursor.getTime() <= endDate.getTime()) {
+    const key = toInputDateString(cursor);
+    dateKeys.push(key);
+    countsByDate.set(key, 0);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  let matchingEventCount = 0;
   const filteredRecords = getAnalyticsRecordsByKind(records, selectedKind);
 
   for (const record of filteredRecords) {
@@ -478,13 +669,26 @@ function buildAnalyticsDailyCounts(records, selectedFilter = 'all', selectedKind
 
     const dateKey = getLocalDateKey(record?.timestamp || '');
     if (!dateKey) continue;
+    if (dateKey < normalizedRange.start || dateKey > normalizedRange.end) continue;
 
     countsByDate.set(dateKey, (countsByDate.get(dateKey) || 0) + 1);
+    matchingEventCount += 1;
   }
 
-  return Array.from(countsByDate.entries())
-    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-    .map(([date, count]) => ({ date, count }));
+  return {
+    counts: dateKeys.map((date) => ({ date, count: countsByDate.get(date) || 0 })),
+    matchingEventCount,
+  };
+}
+
+function applySelectedAnalyticsDateRange() {
+  const dateFromInput = getAnalyticsDateFromInput();
+  const dateToInput = getAnalyticsDateToInput();
+  if (!dateFromInput || !dateToInput) return;
+
+  applyAnalyticsDateRange(dateFromInput.value, dateToInput.value);
+  setAnalyticsRangePresetSelection('custom');
+  renderAnalyticsChart();
 }
 
 function updateAnalyticsFilterOptions() {
@@ -514,13 +718,13 @@ function renderAnalyticsChart() {
   const emptyMessage = document.getElementById('analytics-chart-empty');
   if (!svg) return;
 
-  const counts = buildAnalyticsDailyCounts(
+  const { counts, matchingEventCount } = buildAnalyticsDailyCounts(
     analyticsDashboardState.records,
     analyticsDashboardState.selectedFilter,
     analyticsDashboardState.selectedKind
   );
 
-  if (!counts.length) {
+  if (!counts.length || matchingEventCount === 0) {
     svg.innerHTML = '';
     emptyMessage?.classList.remove('hidden');
     return;
@@ -598,6 +802,8 @@ async function loadAnalyticsDashboard() {
   const select = getAnalyticsFilterSelect();
   if (!select) return;
 
+  initializeAnalyticsDateRange();
+
   setAnalyticsLoadingState(true);
   updateAnalyticsRefreshStatus('Refreshing analytics data…', 'info');
 
@@ -606,6 +812,9 @@ async function loadAnalyticsDashboard() {
 
   try {
     analyticsDashboardState.records = await loadAnalyticsRecords();
+    if (analyticsDashboardState.rangePreset === 'all-time') {
+      applyAnalyticsDatePreset('all-time', { render: false });
+    }
     analyticsDashboardState.selectedKind = previousKind;
     setAnalyticsKind(previousKind);
 
@@ -1498,6 +1707,22 @@ function attachDashboardEvents() {
   analyticsFilterSelect?.addEventListener('change', (event) => {
     analyticsDashboardState.selectedFilter = event.target.value || 'all';
     renderAnalyticsChart();
+  });
+
+  const analyticsDateFromInput = getAnalyticsDateFromInput();
+  const analyticsDateToInput = getAnalyticsDateToInput();
+  analyticsDateFromInput?.addEventListener('change', applySelectedAnalyticsDateRange);
+  analyticsDateToInput?.addEventListener('change', applySelectedAnalyticsDateRange);
+
+  const analyticsRangePresetSelect = getAnalyticsPresetSelect();
+  analyticsRangePresetSelect?.addEventListener('change', (event) => {
+    applyAnalyticsDatePreset(event.target.value || 'last7');
+  });
+
+  getAnalyticsPresetButtons().forEach((button) => {
+    button.addEventListener('click', () => {
+      applyAnalyticsDatePreset(button.dataset.analyticsRangePreset || 'last7');
+    });
   });
 
   window.addEventListener('resize', scheduleAnalyticsChartResize);

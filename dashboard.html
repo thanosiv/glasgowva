@@ -263,6 +263,31 @@
                 <span id="analytics-refresh-status" class="status-text" aria-live="polite"></span>
               </div>
 
+              <div class="analytics-date-range-wrap">
+                <div class="analytics-range-preset-wrap" role="group" aria-label="Analytics date range presets">
+                  <button type="button" class="analytics-range-preset-button active-range-preset" data-analytics-range-preset="last7" aria-pressed="true">Last 7 Days</button>
+                  <button type="button" class="analytics-range-preset-button" data-analytics-range-preset="last30" aria-pressed="false">Last 30 Days</button>
+                  <button type="button" class="analytics-range-preset-button" data-analytics-range-preset="all-time" aria-pressed="false">All Time</button>
+                </div>
+
+                <div class="analytics-range-preset-select-wrap">
+                  <label for="analytics-range-preset-select">Quick range</label>
+                  <select id="analytics-range-preset-select">
+                    <option value="last7">Last 7 Days</option>
+                    <option value="last30">Last 30 Days</option>
+                    <option value="all-time">All Time</option>
+                    <option value="custom">Custom Range</option>
+                  </select>
+                </div>
+
+                <label for="analytics-date-from">Date range</label>
+                <div class="analytics-date-range-inputs">
+                  <input id="analytics-date-from" type="date" />
+                  <span class="analytics-date-range-separator">to</span>
+                  <input id="analytics-date-to" type="date" />
+                </div>
+              </div>
+
               <div class="analytics-chart-shell">
                 <svg id="analytics-chart" viewBox="0 0 760 260" role="img" aria-label="Analytics by date"></svg>
                 <p id="analytics-chart-empty" class="status-text hidden">No analytics data is available for the selected filter.</p>

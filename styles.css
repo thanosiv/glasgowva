@@ -1270,6 +1270,14 @@ iframe {
   #analytics-chart {
     height: 210px;
   }
+
+  .analytics-range-preset-wrap {
+    display: none;
+  }
+
+  .analytics-range-preset-select-wrap {
+    display: flex;
+  }
 }
 
 
@@ -1938,6 +1946,92 @@ iframe {
   gap: 0.5rem;
   max-width: 24rem;
   margin-bottom: 1rem;
+}
+
+.analytics-date-range-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.analytics-range-preset-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.analytics-range-preset-button {
+  border: 1px solid rgba(15, 65, 92, 0.16);
+  background: white;
+  color: var(--primary);
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.analytics-range-preset-button:hover,
+.analytics-range-preset-button:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.analytics-range-preset-button.active-range-preset {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.analytics-range-preset-select-wrap {
+  display: none;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.analytics-range-preset-select-wrap label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.analytics-range-preset-select-wrap select {
+  border: 1px solid rgba(15, 65, 92, 0.16);
+  border-radius: 1rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.analytics-date-range-wrap label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.analytics-date-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.analytics-date-range-inputs input {
+  border: 1px solid rgba(15, 65, 92, 0.16);
+  border-radius: 1rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.analytics-date-range-separator {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .analytics-filter-header-row {
