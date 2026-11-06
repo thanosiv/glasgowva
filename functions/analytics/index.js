@@ -4,6 +4,98 @@ const crypto = require('node:crypto');
 const BUCKET_NAME = process.env.BUCKET_NAME || process.env.GCS_BUCKET || 'glasgow-va';
 const ANALYTICS_PREFIX = process.env.ANALYTICS_PREFIX || 'analytics/';
 
+function isRunningInGoogleCloud() {
+  const cloudMarkers = [
+    process.env.K_SERVICE,
+    process.env.FUNCTION_NAME,
+    process.env.GAE_SERVICE,
+  ];
+
+  return cloudMarkers.some((value) => String(value || '').trim().length > 0);
+}
+
+function shouldPersistAnalyticsRecords() {
+  const mode = String(process.env.ANALYTICS_WRITE_MODE || 'auto').trim().toLowerCase();
+
+  if (mode === 'on' || mode === 'true' || mode === '1' || mode === 'enabled') {
+    return true;
+  }
+
+  if (mode === 'off' || mode === 'false' || mode === '0' || mode === 'disabled') {
+    return false;
+  }
+
+  // Auto mode writes only in Google Cloud runtime and stays off for local runs.
+  return isRunningInGoogleCloud();
+}
+
+function isLocalHostname(hostname) {
+  const value = String(hostname || '').trim().toLowerCase();
+  return value === 'localhost' || value === '127.0.0.1' || value === '::1';
+}
+
+function extractHostnameFromUrl(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  try {
+    return String(new URL(text).hostname || '').trim().toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function isLocalRequestSource(req, eventRecord) {
+  const origin = getHeaderValue(req, 'origin');
+  const referer = getHeaderValue(req, 'referer') || getHeaderValue(req, 'referrer');
+  const eventPageUrl = String(eventRecord?.pageUrl || '').trim();
+  const clientHostname = String(eventRecord?.clientHostname || '').trim().toLowerCase();
+  const clientProtocol = String(eventRecord?.clientProtocol || '').trim().toLowerCase();
+  const clientOrigin = String(eventRecord?.clientOrigin || '').trim();
+
+  if (isLocalHostname(clientHostname)) {
+    return true;
+  }
+
+  if (clientProtocol === 'file:') {
+    return true;
+  }
+
+  if (clientOrigin.toLowerCase() === 'null') {
+    return true;
+  }
+
+  if (isLocalHostname(extractHostnameFromUrl(clientOrigin))) {
+    return true;
+  }
+
+  if (origin.toLowerCase() === 'null') {
+    // Browsers send Origin: null for local file:// pages.
+    return true;
+  }
+
+  const hosts = [
+    extractHostnameFromUrl(origin),
+    extractHostnameFromUrl(referer),
+    extractHostnameFromUrl(eventPageUrl),
+  ].filter(Boolean);
+
+  if (hosts.some((host) => isLocalHostname(host))) {
+    return true;
+  }
+
+  return eventPageUrl.toLowerCase().startsWith('file://');
+}
+
+function shouldPersistEventRecord(req, eventRecord) {
+  const mode = String(process.env.ANALYTICS_WRITE_MODE || 'auto').trim().toLowerCase();
+  if (mode === 'auto') {
+    return !isLocalRequestSource(req, eventRecord);
+  }
+
+  return shouldPersistAnalyticsRecords();
+}
+
 function createStorageFromEnv() {
   const serviceAccountJson = process.env.GCS_SERVICE_ACCOUNT_JSON;
   if (!serviceAccountJson) {
@@ -340,6 +432,9 @@ function normalizeEvent(body) {
     label: String(body?.label || '').trim(),
     pageUrl: String(body?.pageUrl || '').trim(),
     pagePath: String(body?.pagePath || '').trim(),
+    clientHostname: String(body?.clientHostname || '').trim().toLowerCase(),
+    clientProtocol: String(body?.clientProtocol || '').trim().toLowerCase(),
+    clientOrigin: String(body?.clientOrigin || '').trim().toLowerCase(),
     referrer: String(body?.referrer || '').trim(),
     timestamp: String(body?.timestamp || '').trim() || new Date().toISOString(),
     sessionId: String(body?.sessionId || '').trim(),
@@ -453,12 +548,16 @@ exports.analytics = async function analytics(req, res) {
     }
 
     if (req.method === 'POST') {
-      const storage = createStorageFromEnv();
       const eventRecord = enrichEvent(normalizeEvent(parseRequestBody(req)), req);
-      const objectName = toAnalyticsMonthPath(eventRecord.timestamp);
+      const shouldPersist = shouldPersistEventRecord(req, eventRecord);
 
-      await appendMonthlyEvent(storage, BUCKET_NAME, objectName, eventRecord);
-      return res.status(202).json({ ok: true });
+      if (shouldPersist) {
+        const storage = createStorageFromEnv();
+        const objectName = toAnalyticsMonthPath(eventRecord.timestamp);
+        await appendMonthlyEvent(storage, BUCKET_NAME, objectName, eventRecord);
+      }
+
+      return res.status(202).json({ ok: true, persisted: shouldPersist });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

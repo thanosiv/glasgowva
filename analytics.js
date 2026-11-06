@@ -138,10 +138,16 @@
     const pageUrl = window.location.href;
     const pagePath = getCurrentPagePath();
     const sessionContext = getSessionContext();
+    const clientHostname = String(window.location.hostname || '').trim().toLowerCase();
+    const clientProtocol = String(window.location.protocol || '').trim().toLowerCase();
+    const clientOrigin = String(window.location.origin || '').trim().toLowerCase();
 
     return {
       pageUrl,
       pagePath,
+      clientHostname,
+      clientProtocol,
+      clientOrigin,
       referrer: document.referrer || '',
       timestamp: new Date().toISOString(),
       language: String(navigator.language || '').trim(),
