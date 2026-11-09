@@ -62,6 +62,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("water-calc-form");
   const valueInput = document.getElementById("water-calc-input");
   const billInput = document.getElementById("water-calc-bill-input");
+  const fullYearCheckbox = document.getElementById("water-calc-full-year");
+  const twoMonthsCheckbox = document.getElementById("water-calc-two-months");
+  const includeTrashCheckbox = document.getElementById("water-calc-include-trash");
+  const excludeSewerCheckbox = document.getElementById("water-calc-exclude-sewer");
+  const trashSlider = document.getElementById("water-calc-trash-slider");
+  const trashSliderValue = document.getElementById("water-calc-trash-slider-value");
   const status = document.getElementById("water-calc-status");
   const output = document.getElementById("water-calc-output");
 
@@ -75,11 +81,31 @@ document.addEventListener("DOMContentLoaded", () => {
   const sewerAccountChargeEl = document.getElementById("sewer-account-charge");
   const waterTotalEl = document.getElementById("water-total");
   const sewerTotalEl = document.getElementById("sewer-total");
+  const trashPickupChargeEl = document.getElementById("trash-pickup-charge");
   const grandTotalEl = document.getElementById("grand-total");
 
-  if (!form || !valueInput || !billInput || !status || !output) {
+  if (!form || !valueInput || !billInput || !fullYearCheckbox || !twoMonthsCheckbox || !includeTrashCheckbox || !excludeSewerCheckbox || !trashSlider || !trashSliderValue || !status || !output) {
     return;
   }
+
+  function getSelectedTrashAmount() {
+    const parsed = Number.parseFloat(String(trashSlider.value || ""));
+    if (Number.isNaN(parsed)) {
+      return 30;
+    }
+
+    return parsed;
+  }
+
+  function updateTrashSliderLabel() {
+    trashSliderValue.textContent = `Selected: $${formatCurrency(getSelectedTrashAmount())}`;
+  }
+
+  updateTrashSliderLabel();
+
+  trashSlider.addEventListener("input", () => {
+    updateTrashSliderLabel();
+  });
 
   valueInput.addEventListener("input", () => {
     const sanitized = sanitizeDecimalInput(valueInput.value);
@@ -105,6 +131,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const billEntered = Number.parseFloat(billSanitized);
     const hasUsage = usageSanitized && !Number.isNaN(usageEntered);
     const hasBill = billSanitized && !Number.isNaN(billEntered);
+    const simulateFullYear = Boolean(fullYearCheckbox.checked);
+    const simulateTwoMonths = Boolean(twoMonthsCheckbox.checked);
+    const includeTrashPickup = Boolean(includeTrashCheckbox.checked);
+    const excludeSewerCharges = Boolean(excludeSewerCheckbox.checked);
+    const inputMultiplier = simulateTwoMonths ? 2 : 1;
+    const periodMultiplier = simulateFullYear ? 12 : inputMultiplier;
+    const periodLabel = simulateFullYear ? "Yearly" : (simulateTwoMonths ? "2-Month" : "Monthly");
+    const selectedTrashAmount = getSelectedTrashAmount();
     let valueEntered = usageEntered;
 
     if (!hasUsage && !hasBill) {
@@ -117,13 +151,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (hasUsage) {
-      valueEntered = usageEntered;
+      valueEntered = usageEntered / inputMultiplier;
       billInput.setAttribute("aria-invalid", "false");
     } else {
-      valueEntered = getUsageFromGlasgowBill(billEntered);
+      const monthlyBillEquivalent = billEntered / inputMultiplier;
+      valueEntered = getUsageFromGlasgowBill(monthlyBillEquivalent);
       if (valueEntered === null) {
         const baseTotal = GLASGOW_RATES.WATER_BASE_FEE + GLASGOW_RATES.SEWER_BASE_FEE;
-        status.textContent = `Glasgow monthly bill must be at least $${formatCurrency(baseTotal)} based on current published base rates.`;
+        const requiredBaseForEnteredPeriod = baseTotal * inputMultiplier;
+        const billPeriodText = simulateTwoMonths ? "2-month" : "monthly";
+        status.textContent = `Glasgow ${billPeriodText} bill must be at least $${formatCurrency(requiredBaseForEnteredPeriod)} based on current published base rates.`;
         status.className = "status-text status-error";
         valueInput.setAttribute("aria-invalid", "true");
         billInput.setAttribute("aria-invalid", "true");
@@ -133,9 +170,10 @@ document.addEventListener("DOMContentLoaded", () => {
       valueInput.setAttribute("aria-invalid", "false");
     }
 
-    if (valueEntered >= 100) {
-      const thousandGallonsExample = (valueEntered / 1000).toFixed(1);
-      const gallonsText = new Intl.NumberFormat("en-US").format(valueEntered);
+    const usageValidationValue = hasUsage ? usageEntered : valueEntered;
+    if (usageValidationValue >= 100) {
+      const thousandGallonsExample = (usageValidationValue / 1000).toFixed(1);
+      const gallonsText = new Intl.NumberFormat("en-US").format(usageValidationValue);
       status.textContent = `Please enter usage in thousand gallons. Example: ${thousandGallonsExample} for ${gallonsText} gallons.`;
       status.className = "status-text status-error";
       valueInput.setAttribute("aria-invalid", "true");
@@ -152,31 +190,77 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const glasgowWaterCharge = GLASGOW_RATES.WATER_BASE_FEE + (overage * GLASGOW_RATES.WATER_OVERAGE_PER_K);
     const glasgowSewerCharge = GLASGOW_RATES.SEWER_BASE_FEE + (overage * GLASGOW_RATES.SEWER_OVERAGE_PER_K);
-    const glasgowGrandTotal = glasgowWaterCharge + glasgowSewerCharge;
+    const glasgowSewerChargeIncluded = excludeSewerCharges ? 0 : glasgowSewerCharge;
+    const glasgowGrandTotal = glasgowWaterCharge + glasgowSewerChargeIncluded;
+    const glasgowWaterChargeForPeriod = glasgowWaterCharge * periodMultiplier;
+    const glasgowSewerChargeForPeriod = glasgowSewerChargeIncluded * periodMultiplier;
+    const glasgowGrandTotalForPeriod = glasgowGrandTotal * periodMultiplier;
 
     // --- Rockbridge PSA Calculations ---
     const waterAccountCharge = PSA_RATES.WATER_ACCOUNT_CHARGE;
     const sewerAccountCharge = PSA_RATES.SEWER_ACCOUNT_CHARGE;
     const waterTotal = valueEntered * PSA_RATES.WATER_PER_K;
     const sewerTotal = valueEntered * PSA_RATES.SEWER_PER_K;
-    const psaGrandTotal = waterTotal + sewerTotal + waterAccountCharge + sewerAccountCharge;
+    const sewerAccountChargeIncluded = excludeSewerCharges ? 0 : sewerAccountCharge;
+    const sewerTotalIncluded = excludeSewerCharges ? 0 : sewerTotal;
+    const psaGrandTotal = waterTotal + sewerTotalIncluded + waterAccountCharge + sewerAccountChargeIncluded;
+    const waterAccountChargeForPeriod = waterAccountCharge * periodMultiplier;
+    const sewerAccountChargeForPeriod = sewerAccountChargeIncluded * periodMultiplier;
+    const waterTotalForPeriod = waterTotal * periodMultiplier;
+    const sewerTotalForPeriod = sewerTotalIncluded * periodMultiplier;
+    const trashPickupForPeriod = includeTrashPickup ? (selectedTrashAmount * periodMultiplier) : 0;
+    const psaGrandTotalForPeriod = (psaGrandTotal * periodMultiplier) + trashPickupForPeriod;
 
     // Output Glasgow results
-    if (glasgowWaterChargeEl) glasgowWaterChargeEl.textContent = `Water Charge = $${formatCurrency(glasgowWaterCharge)}`;
-    if (glasgowSewerChargeEl) glasgowSewerChargeEl.textContent = `Sewer Charge = $${formatCurrency(glasgowSewerCharge)}`;
-    if (glasgowGrandTotalEl) glasgowGrandTotalEl.textContent = `Grand Total = $${formatCurrency(glasgowGrandTotal)}`;
+    if (glasgowWaterChargeEl) glasgowWaterChargeEl.textContent = `${periodLabel} Water Charge = $${formatCurrency(glasgowWaterChargeForPeriod)}`;
+    if (glasgowSewerChargeEl) {
+      glasgowSewerChargeEl.textContent = excludeSewerCharges
+        ? `${periodLabel} Sewer Charge = $0.00 (excluded)`
+        : `${periodLabel} Sewer Charge = $${formatCurrency(glasgowSewerChargeForPeriod)}`;
+    }
+    if (glasgowGrandTotalEl) glasgowGrandTotalEl.textContent = `${periodLabel} Grand Total = $${formatCurrency(glasgowGrandTotalForPeriod)}`;
 
     // Output PSA results
-    if (waterAccountChargeEl) waterAccountChargeEl.textContent = `Water Account Charge = $${formatCurrency(waterAccountCharge)}`;
-    if (sewerAccountChargeEl) sewerAccountChargeEl.textContent = `Sewer Account Charge = $${formatCurrency(sewerAccountCharge)}`;
-    if (waterTotalEl) waterTotalEl.textContent = `Water Total = $${formatCurrency(waterTotal)}`;
-    if (sewerTotalEl) sewerTotalEl.textContent = `Sewer Total = $${formatCurrency(sewerTotal)}`;
-    if (grandTotalEl) grandTotalEl.textContent = `Grand Total = $${formatCurrency(psaGrandTotal)}`;
+    if (waterAccountChargeEl) waterAccountChargeEl.textContent = `${periodLabel} Water Account Charge = $${formatCurrency(waterAccountChargeForPeriod)}`;
+    if (sewerAccountChargeEl) {
+      sewerAccountChargeEl.textContent = excludeSewerCharges
+        ? `${periodLabel} Sewer Account Charge = $0.00 (excluded)`
+        : `${periodLabel} Sewer Account Charge = $${formatCurrency(sewerAccountChargeForPeriod)}`;
+    }
+    if (waterTotalEl) waterTotalEl.textContent = `${periodLabel} Water Total = $${formatCurrency(waterTotalForPeriod)}`;
+    if (sewerTotalEl) {
+      sewerTotalEl.textContent = excludeSewerCharges
+        ? `${periodLabel} Sewer Total = $0.00 (excluded)`
+        : `${periodLabel} Sewer Total = $${formatCurrency(sewerTotalForPeriod)}`;
+    }
+    if (trashPickupChargeEl) {
+      trashPickupChargeEl.textContent = includeTrashPickup
+        ? `${periodLabel} Trash Pickup = $${formatCurrency(trashPickupForPeriod)}`
+        : "";
+    }
+    if (grandTotalEl) grandTotalEl.textContent = `${periodLabel} Grand Total = $${formatCurrency(psaGrandTotalForPeriod)}`;
 
+    const usagePeriodText = simulateTwoMonths ? " per month (derived from 2-month input)" : "";
     if (hasUsage) {
-      status.textContent = "Calculation complete.";
+      if (simulateFullYear) {
+        status.textContent = simulateTwoMonths
+          ? "Calculation complete. Input treated as 2-month usage. Showing simulated yearly totals."
+          : "Calculation complete. Showing simulated yearly totals.";
+      } else if (simulateTwoMonths) {
+        status.textContent = "Calculation complete. Showing simulated 2-month totals.";
+      } else {
+        status.textContent = "Calculation complete.";
+      }
     } else {
-      status.textContent = `Calculation complete. Estimated usage from Glasgow bill: ${valueEntered.toFixed(2)} thousand gallons.`;
+      if (simulateFullYear) {
+        status.textContent = simulateTwoMonths
+          ? `Calculation complete. Estimated usage: ${valueEntered.toFixed(2)} thousand gallons${usagePeriodText}. Showing simulated yearly totals.`
+          : `Calculation complete. Estimated usage from Glasgow bill: ${valueEntered.toFixed(2)} thousand gallons. Showing simulated yearly totals.`;
+      } else if (simulateTwoMonths) {
+        status.textContent = `Calculation complete. Estimated usage: ${valueEntered.toFixed(2)} thousand gallons${usagePeriodText}. Showing simulated 2-month totals.`;
+      } else {
+        status.textContent = `Calculation complete. Estimated usage from Glasgow bill: ${valueEntered.toFixed(2)} thousand gallons.`;
+      }
     }
     status.className = "status-text status-success";
     output.classList.remove("hidden");

@@ -26,12 +26,12 @@
 
           <article class="card">
             <!-- This calculator was created in cooperation with the Rockbridge County PSA. -->
-            <div class="service-request-status-card" style="margin-bottom: 1.5rem;">
-              <p style="margin-top: 0; margin-bottom: 1rem; font-weight: 600; color: #1f2b3d;">This calculator is intended to help residents compare the cost of Town of Glasgow water and sewer service with the Rockbridge County PSA rates, as part of understanding the potential impact of surrendering our charter and reincorporating with Rockbridge County.</p>
+            <div class="service-request-status-card watercalc-intro">
+              <p class="watercalc-intro-lead">This calculator is intended to help residents compare the cost of Town of Glasgow water and sewer service with the Rockbridge County PSA rates, as part of understanding the potential impact of surrendering our charter and reincorporating with Rockbridge County.</p>
               <h2>Current published rates</h2>
-              <p style="margin-top: 0.5rem; margin-bottom: 1rem;">Town of Glasgow water and sewer rates shown below are taken from the News-Gazette's May 20, 2026 edition.</p>
-              <p style="margin-top: 0; margin-bottom: 1rem;">This calculator was created in cooperation with the Rockbridge County PSA.</p>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+              <p class="watercalc-intro-copy">Town of Glasgow water and sewer rates shown below are taken from the News-Gazette's May 20, 2026 edition.</p>
+              <p class="watercalc-intro-copy">This calculator was created in cooperation with the Rockbridge County PSA.</p>
+              <div class="watercalc-rate-grid">
                 <div>
                   <h3>Town of Glasgow</h3>
                   <ul>
@@ -79,6 +79,51 @@
                   placeholder="Enter dollar amount (example: 96.40)"
                 />
               </div>
+              <div class="watercalc-toggle-row">
+                <input
+                  id="water-calc-full-year"
+                  name="water-calc-full-year"
+                  type="checkbox"
+                />
+                <label for="water-calc-full-year">Simulate full year cost</label>
+              </div>
+              <div class="watercalc-toggle-row">
+                <input
+                  id="water-calc-two-months"
+                  name="water-calc-two-months"
+                  type="checkbox"
+                />
+                <label for="water-calc-two-months">Simulate as 2 months</label>
+              </div>
+              <div class="watercalc-toggle-row">
+                <input
+                  id="water-calc-include-trash"
+                  name="water-calc-include-trash"
+                  type="checkbox"
+                />
+                <label for="water-calc-include-trash">Include Trash Pickup</label>
+              </div>
+              <div class="watercalc-toggle-row">
+                <input
+                  id="water-calc-exclude-sewer"
+                  name="water-calc-exclude-sewer"
+                  type="checkbox"
+                />
+                <label for="water-calc-exclude-sewer">Exclude Sewer Charges</label>
+              </div>
+              <div class="form-group watercalc-slider-group">
+                <label for="water-calc-trash-slider">Trash Pickup Amount ($30, $35, $40, or $45)</label>
+                <input
+                  id="water-calc-trash-slider"
+                  name="water-calc-trash-slider"
+                  type="range"
+                  min="30"
+                  max="45"
+                  step="5"
+                  value="30"
+                />
+                <p id="water-calc-trash-slider-value" class="watercalc-slider-value">Selected: $30.00</p>
+              </div>
               <div class="form-actions">
                 <button type="submit" class="button button-primary">Calculate</button>
                 <span id="water-calc-status" class="status-text status-info" aria-live="polite"></span>
@@ -87,7 +132,7 @@
 
             <div id="water-calc-output" class="service-request-status-card hidden" aria-live="polite">
               <h2>Output</h2>
-              <div class="calc-comparison-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+              <div class="calc-comparison-grid watercalc-output-grid">
                 <div class="calc-column">
                   <h3>Town of Glasgow</h3>
                   <p id="glasgow-water-charge"></p>
@@ -100,6 +145,7 @@
                   <p id="sewer-account-charge"></p>
                   <p id="water-total"></p>
                   <p id="sewer-total"></p>
+                  <p id="trash-pickup-charge"></p>
                   <p id="grand-total"></p>
                 </div>
               </div>

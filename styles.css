@@ -971,6 +971,80 @@ iframe {
   border-top: 1px solid rgba(15, 65, 92, 0.08);
 }
 
+.watercalc-intro {
+  margin-bottom: 1.5rem;
+}
+
+.watercalc-intro-lead {
+  margin: 0 0 1rem;
+  font-weight: 600;
+  color: #1f2b3d;
+}
+
+.watercalc-intro-copy {
+  margin: 0.5rem 0 1rem;
+}
+
+.watercalc-rate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.watercalc-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.2rem 0;
+}
+
+.watercalc-toggle-row input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.3rem;
+  accent-color: var(--primary);
+  box-shadow: none;
+  flex: 0 0 auto;
+}
+
+.watercalc-toggle-row label {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text);
+}
+
+.watercalc-slider-group input[type="range"] {
+  width: min(360px, 100%);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  accent-color: var(--primary);
+}
+
+.watercalc-slider-group input[type="range"]:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.watercalc-slider-value {
+  margin: 0.25rem 0 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.watercalc-output-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
 .service-request-status-card h3 {
   margin-top: 0;
 }
